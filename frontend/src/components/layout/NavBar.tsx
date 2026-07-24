@@ -10,7 +10,6 @@ export function NavBar() {
                 <Link to="/agendar">Agendar</Link>
                 <Link to="/#sobre">Sobre</Link>
                 <Link to="/#servicos">Serviços</Link>
-                <Link to="/admin">Área do professor</Link>
             </div>
         </nav>
     );
