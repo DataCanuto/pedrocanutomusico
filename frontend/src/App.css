@@ -1,0 +1,522 @@
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.navbar .marca {
+  font-weight: 700;
+  font-size: 20px;
+  text-decoration: none;
+  color: var(--text-h);
+}
+
+.navbar .links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+
+.navbar .links a {
+  text-decoration: none;
+  color: var(--text);
+}
+
+.conteudo {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+}
+
+/* Home */
+.pagina-home section {
+  margin-top: 56px;
+}
+
+.pagina-home section:first-child {
+  margin-top: 0;
+}
+
+.pagina-home h2 {
+  font-size: 28px;
+  margin-bottom: 16px;
+}
+
+.pagina-home h3 {
+  font-size: 20px;
+  margin: 20px 0 8px;
+}
+
+.pagina-home ul {
+  padding-left: 20px;
+}
+
+.pagina-home li {
+  margin-bottom: 4px;
+}
+
+.hero {
+  text-align: center;
+  padding: 32px 0;
+}
+
+.hero-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 0;
+}
+
+.hero h1 {
+  font-size: 36px;
+  margin: 12px 0 16px;
+}
+
+.hero-lead {
+  text-align: left;
+}
+
+.botao-principal,
+.botao-secundario {
+  display: inline-block;
+  margin-top: 20px;
+  padding: 12px 28px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.botao-principal {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.botao-secundario {
+  margin-top: 16px;
+  padding: 10px 20px;
+  font-size: 14px;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+/* Sobre */
+.accordion-grupo {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+/* Accordion (Sobre e Vitrine de Serviços) */
+.accordion-item {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.accordion-gatilho {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  background: none;
+  border: none;
+  text-align: left;
+  font: inherit;
+  color: var(--text-h);
+}
+
+.accordion-gatilho:hover {
+  background: var(--bg-muted);
+}
+
+.accordion-gatilho-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.accordion-titulo {
+  font-weight: 700;
+  font-size: 17px;
+}
+
+.accordion-subtitulo {
+  font-weight: 400;
+  font-size: 14px;
+  color: var(--text);
+  opacity: 0.85;
+}
+
+.accordion-icone {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--bg-muted);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.accordion-painel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s ease;
+}
+
+.accordion-item[data-aberto="true"] .accordion-painel {
+  grid-template-rows: 1fr;
+}
+
+.accordion-painel-inner {
+  overflow: hidden;
+  padding: 0 20px;
+}
+
+.accordion-item[data-aberto="true"] .accordion-painel-inner {
+  padding: 0 20px 20px;
+}
+
+/* Vitrine de Serviços */
+.servicos-vitrine {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  align-items: start;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.servico-card .accordion-titulo {
+  font-size: 18px;
+}
+
+.servico-imagem {
+  display: block;
+  width: 100%;
+  max-height: 240px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.servico-lista-titulo {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.kpis ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.kpis li {
+  padding: 10px 16px;
+  background: var(--bg-muted);
+  border-radius: 999px;
+  font-size: 14px;
+}
+
+.chamada-final {
+  text-align: center;
+  padding: 32px 0;
+}
+
+/* Formulários */
+.form-section {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-section legend {
+  padding: 0 8px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.form-section label {
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.form-section input,
+.form-section select,
+.form-section textarea {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.form-section small {
+  color: var(--text);
+  opacity: 0.7;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-direction: row !important;
+}
+
+.erro-campo {
+  color: var(--erro);
+  font-size: 13px;
+}
+
+.valor-estimado {
+  margin-top: 12px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.aviso {
+  margin-top: 12px;
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+.pagina-agendar button[type="submit"] {
+  width: 100%;
+  padding: 14px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.pagina-agendar button[type="submit"]:disabled {
+  opacity: 0.6;
+}
+
+.confirmacao {
+  text-align: center;
+  padding: 40px 0;
+}
+
+.anamnese-secao {
+  border-color: var(--accent);
+}
+
+.anamnese-confirmacao {
+  color: var(--text-h);
+  font-weight: 600;
+}
+
+.anamnese-salva button {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.botao-whatsapp {
+  display: inline-block;
+  margin-top: 20px;
+  padding: 14px 28px;
+  background: var(--whatsapp);
+  color: #fff;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+/* Admin */
+.admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.admin-hub {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.admin-hub-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--text);
+  background: var(--bg-muted);
+}
+
+.admin-hub-card strong {
+  color: var(--text-h);
+  font-size: 16px;
+}
+
+.admin-hub-card span {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.admin-lista-acoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.tabela-precos {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+}
+
+.tabela-precos th,
+.tabela-precos td {
+  text-align: left;
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabela-precos input {
+  width: 100px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Agenda */
+.agenda-modos {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.agenda-modos button {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.agenda-modo-ativo {
+  background: var(--accent) !important;
+  color: var(--accent-contrast) !important;
+  border-color: var(--accent) !important;
+}
+
+.agenda-semana {
+  display: grid;
+  gap: 12px;
+}
+
+.agenda-semana-dia {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.agenda-semana-dia h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.agenda-navegacao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 16px 0;
+}
+
+.agenda-calendario {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.agenda-calendario th {
+  padding: 6px;
+  font-size: 13px;
+  color: var(--text);
+  opacity: 0.7;
+}
+
+.agenda-calendario td {
+  border: 1px solid var(--border);
+  height: 56px;
+  vertical-align: top;
+  padding: 6px;
+}
+
+.agenda-dia {
+  cursor: pointer;
+  position: relative;
+}
+
+.agenda-dia:hover {
+  background: var(--bg-muted);
+}
+
+.agenda-dia[aria-selected="true"] {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.agenda-dia-vazio {
+  background: var(--bg-muted);
+  opacity: 0.4;
+}
+
+.agenda-dia-numero {
+  font-size: 13px;
+}
+
+.agenda-dia-contagem {
+  display: block;
+  margin-top: 6px;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.agenda-detalhe-dia {
+  margin-top: 24px;
+}
+
+.agenda-lista-dia {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.agenda-lista-dia li {
+  padding: 12px 16px;
+  background: var(--bg-muted);
+  border-radius: 8px;
+}

@@ -1,0 +1,23 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+*.class
+
+# IDE
+.idea/
+*.iws
+*.iml
+*.ipr
+.vscode/
+.classpath
+.project
+.settings/
+
+# Logs
+*.log
+
+# H2 local database files (dev/manual runs)
+*.mv.db
+*.trace.db
+
+HELP.md

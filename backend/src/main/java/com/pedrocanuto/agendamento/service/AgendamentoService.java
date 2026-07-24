@@ -1,0 +1,271 @@
+package com.pedrocanuto.agendamento.service;
+
+import com.pedrocanuto.agendamento.domain.Agendamento;
+import com.pedrocanuto.agendamento.domain.Aluno;
+import com.pedrocanuto.agendamento.domain.Cliente;
+import com.pedrocanuto.agendamento.domain.Matricula;
+import com.pedrocanuto.agendamento.domain.PrecoServico;
+import com.pedrocanuto.agendamento.domain.Turma;
+import com.pedrocanuto.agendamento.domain.enums.ECategoriaServico;
+import com.pedrocanuto.agendamento.domain.enums.EInstrumento;
+import com.pedrocanuto.agendamento.domain.enums.EModalidadeServico;
+import com.pedrocanuto.agendamento.domain.enums.EStatusAgendamento;
+import com.pedrocanuto.agendamento.domain.enums.EStatusMatricula;
+import com.pedrocanuto.agendamento.domain.enums.ETipoContratacao;
+import com.pedrocanuto.agendamento.dto.request.AgendamentoRequestDTO;
+import com.pedrocanuto.agendamento.dto.request.AgendarProximaAulaRequestDTO;
+import com.pedrocanuto.agendamento.dto.request.AlunoSelecaoRequestDTO;
+import com.pedrocanuto.agendamento.dto.response.AgendamentoResponseDTO;
+import com.pedrocanuto.agendamento.exception.RecursoNaoEncontradoException;
+import com.pedrocanuto.agendamento.exception.RegraDeNegocioException;
+import com.pedrocanuto.agendamento.mapper.AgendamentoMapper;
+import com.pedrocanuto.agendamento.mapper.EnderecoFormatter;
+import com.pedrocanuto.agendamento.repository.AgendamentoRepository;
+import com.pedrocanuto.agendamento.service.validation.AgendamentoValidator;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Orquestra a criação e o ciclo de vida de um Agendamento. As transições de status são métodos
+ * nomeados (confirmar/checkIn/iniciar/finalizar/cancelar/marcarFalta) em vez de um PATCH
+ * genérico, porque cada uma tem uma regra de estado-anterior-legal diferente
+ * (ver {@link EStatusAgendamento#podeTransicionarPara}).
+ */
+@Service
+@Transactional
+public class AgendamentoService {
+
+    private final AgendamentoRepository agendamentoRepository;
+    private final ClienteService clienteService;
+    private final AlunoService alunoService;
+    private final PrecoServicoService precoServicoService;
+    private final MatriculaService matriculaService;
+    private final AnamneseService anamneseService;
+    private final AgendamentoValidator validator;
+    private final AgendamentoMapper agendamentoMapper;
+
+    public AgendamentoService(AgendamentoRepository agendamentoRepository, ClienteService clienteService,
+                               AlunoService alunoService, PrecoServicoService precoServicoService,
+                               MatriculaService matriculaService, AnamneseService anamneseService,
+                               AgendamentoValidator validator, AgendamentoMapper agendamentoMapper) {
+        this.agendamentoRepository = agendamentoRepository;
+        this.clienteService = clienteService;
+        this.alunoService = alunoService;
+        this.precoServicoService = precoServicoService;
+        this.matriculaService = matriculaService;
+        this.anamneseService = anamneseService;
+        this.validator = validator;
+        this.agendamentoMapper = agendamentoMapper;
+    }
+
+    public AgendamentoResponseDTO criar(AgendamentoRequestDTO dto) {
+        validator.validarCamposPorCategoria(dto);
+        validarDisponibilidade(dto.data(), dto.hora());
+
+        Cliente cliente = clienteService.buscarOuCriar(dto.cliente());
+
+        if (dto.categoria().isEvento()) {
+            Agendamento agendamento = new Agendamento();
+            agendamento.setCliente(cliente);
+            agendamento.setCategoria(dto.categoria());
+            agendamento.setData(dto.data());
+            agendamento.setHora(dto.hora());
+            agendamento.setObservacoes(dto.observacoes());
+            preencherCamposDeEvento(agendamento, dto);
+            return agendamentoMapper.toResponseDTO(agendamentoRepository.save(agendamento));
+        }
+
+        Agendamento agendamento = criarAgendamentoDeAula(cliente, dto.aluno(), dto.categoria(), dto.modalidade(),
+                dto.tipoContratacao(), dto.instrumento(), dto.data(), dto.hora(), null, null, dto.observacoes());
+        if (dto.categoria() == ECategoriaServico.MUSICOTERAPIA) {
+            anamneseService.criarSeAusente(agendamento.getAluno(), dto.anamnese());
+        }
+        return agendamentoMapper.toResponseDTO(agendamento);
+    }
+
+    private void preencherCamposDeEvento(Agendamento agendamento, AgendamentoRequestDTO dto) {
+        PrecoServico pacote = precoServicoService.buscarPacoteDeEvento(dto.eventoPrecoServicoId());
+
+        agendamento.setTipoEvento(dto.tipoEvento());
+        agendamento.setLocal(EnderecoFormatter.resumo(dto.enderecoEvento()));
+        agendamento.setPrecoServico(pacote);
+        // valorCobrado fica nulo quando o pacote escolhido é "sob consulta" - o professor define
+        // depois via definirOrcamento(). Pacotes com preço fixo já saem cobrados na hora.
+        agendamento.setValorCobrado(pacote.getValor());
+        agendamento.setDuracaoMinutos(resolverDuracaoDoEvento(pacote, dto.duracaoMinutosEvento()));
+        if (dto.musicasObrigatorias() != null) {
+            agendamento.getMusicasObrigatorias().addAll(dto.musicasObrigatorias());
+        }
+    }
+
+    private int resolverDuracaoDoEvento(PrecoServico pacote, Integer duracaoInformadaPeloCliente) {
+        if (pacote.getDuracaoPadraoMinutos() != null) {
+            return pacote.getDuracaoPadraoMinutos();
+        }
+        if (duracaoInformadaPeloCliente == null || duracaoInformadaPeloCliente <= 0) {
+            throw new RegraDeNegocioException(
+                    "O pacote \"%s\" não tem duração padrão - informe duracaoMinutosEvento".formatted(pacote.getNome()));
+        }
+        return duracaoInformadaPeloCliente;
+    }
+
+    /**
+     * Núcleo compartilhado entre a criação direta de agendamento de aula e a inscrição em Turma
+     * (ver TurmaService) - a única diferença entre os dois fluxos é de onde vêm data/hora/local/
+     * turma (do request direto, ou fixados pela Turma).
+     */
+    Agendamento criarAgendamentoDeAula(Cliente cliente, AlunoSelecaoRequestDTO alunoSelecao, ECategoriaServico categoria,
+                                        EModalidadeServico modalidade, ETipoContratacao tipoContratacao, EInstrumento instrumento,
+                                        LocalDate data, LocalTime hora, String local, Turma turma, String observacoes) {
+        Aluno aluno = alunoService.buscarOuCriarParaResponsavel(cliente, alunoSelecao);
+        PrecoServico precoServico = precoServicoService.buscarPorCategoriaModalidadeEPacote(categoria, modalidade, tipoContratacao);
+        Matricula matricula = matriculaService.criar(cliente, aluno, precoServico, tipoContratacao, instrumento);
+
+        Agendamento agendamento = new Agendamento();
+        agendamento.setCliente(cliente);
+        agendamento.setCategoria(categoria);
+        agendamento.setAluno(aluno);
+        agendamento.setMatricula(matricula);
+        agendamento.setPrecoServico(precoServico);
+        agendamento.setTurma(turma);
+        agendamento.setInstrumento(instrumento);
+        agendamento.setLocal(local);
+        agendamento.setValorCobrado(valorPorAula(matricula));
+        agendamento.setDuracaoMinutos(precoServico.getDuracaoPadraoMinutos());
+        agendamento.setData(data);
+        agendamento.setHora(hora);
+        agendamento.setObservacoes(observacoes);
+
+        return agendamentoRepository.save(agendamento);
+    }
+
+    /** Fatiamento simples do valor do pacote pela quantidade de aulas, para atribuir receita por aula/mês. Pequenas diferenças de arredondamento no último centavo são aceitáveis nesta escala. */
+    private BigDecimal valorPorAula(Matricula matricula) {
+        return matricula.getValorTotal().divide(
+                BigDecimal.valueOf(matricula.getTipoContratacao().getQuantidadeAulas()), 2, RoundingMode.HALF_UP);
+    }
+
+    /** Agenda mais uma aula contra o saldo de uma Matricula já fechada (não fecha um novo pacote). */
+    public AgendamentoResponseDTO agendarProximaAula(Long matriculaId, AgendarProximaAulaRequestDTO dto) {
+        Matricula matricula = matriculaService.buscarComLockPorId(matriculaId);
+        if (matricula.getStatus() != EStatusMatricula.ATIVA) {
+            throw new RegraDeNegocioException("Matrícula não está ativa");
+        }
+        if (matriculaService.calcularAulasRestantes(matricula) <= 0) {
+            throw new RegraDeNegocioException("Pacote sem aulas restantes - feche um novo pacote para continuar agendando");
+        }
+        validator.validarHorario(dto.hora());
+        validarDisponibilidade(dto.data(), dto.hora());
+
+        PrecoServico precoServico = matricula.getPrecoServico();
+        Agendamento agendamento = new Agendamento();
+        agendamento.setCliente(matricula.getCliente());
+        agendamento.setAluno(matricula.getAluno());
+        agendamento.setMatricula(matricula);
+        agendamento.setPrecoServico(precoServico);
+        agendamento.setCategoria(precoServico.getCategoria());
+        agendamento.setInstrumento(matricula.getInstrumento());
+        agendamento.setValorCobrado(valorPorAula(matricula));
+        agendamento.setDuracaoMinutos(precoServico.getDuracaoPadraoMinutos());
+        agendamento.setData(dto.data());
+        agendamento.setHora(dto.hora());
+        agendamento.setObservacoes(dto.observacoes());
+
+        return agendamentoMapper.toResponseDTO(agendamentoRepository.save(agendamento));
+    }
+
+    public AgendamentoResponseDTO definirOrcamento(Long id, BigDecimal valor) {
+        Agendamento agendamento = buscarEntidadePorId(id);
+        if (agendamento.getCategoria() != ECategoriaServico.EVENTO) {
+            throw new RegraDeNegocioException("Orçamento manual só se aplica a agendamentos de categoria EVENTO");
+        }
+        if (valor == null || valor.signum() <= 0) {
+            throw new RegraDeNegocioException("Valor do orçamento deve ser positivo");
+        }
+        agendamento.setValorCobrado(valor);
+        return agendamentoMapper.toResponseDTO(agendamento);
+    }
+
+    public AgendamentoResponseDTO confirmar(Long id) {
+        return agendamentoMapper.toResponseDTO(transicionar(id, EStatusAgendamento.CONFIRMADO));
+    }
+
+    public AgendamentoResponseDTO checkIn(Long id) {
+        Agendamento agendamento = transicionar(id, EStatusAgendamento.CHECK_IN);
+        agendamento.setDataHoraCheckIn(LocalDateTime.now());
+        return agendamentoMapper.toResponseDTO(agendamento);
+    }
+
+    public AgendamentoResponseDTO iniciar(Long id) {
+        return agendamentoMapper.toResponseDTO(transicionar(id, EStatusAgendamento.EM_ANDAMENTO));
+    }
+
+    public AgendamentoResponseDTO finalizar(Long id) {
+        Agendamento agendamento = transicionar(id, EStatusAgendamento.FINALIZADO);
+        agendamento.setDataHoraFinalizacao(LocalDateTime.now());
+        return agendamentoMapper.toResponseDTO(agendamento);
+    }
+
+    public AgendamentoResponseDTO cancelar(Long id) {
+        return agendamentoMapper.toResponseDTO(transicionar(id, EStatusAgendamento.CANCELADO));
+    }
+
+    public AgendamentoResponseDTO marcarFalta(Long id) {
+        return agendamentoMapper.toResponseDTO(transicionar(id, EStatusAgendamento.FALTOU));
+    }
+
+    private Agendamento transicionar(Long id, EStatusAgendamento novoStatus) {
+        Agendamento agendamento = buscarEntidadePorId(id);
+        if (!agendamento.getStatus().podeTransicionarPara(novoStatus)) {
+            throw new RegraDeNegocioException(
+                    "Não é possível mudar o status de %s para %s".formatted(agendamento.getStatus(), novoStatus));
+        }
+        agendamento.setStatus(novoStatus);
+        return agendamento;
+    }
+
+    @Transactional(readOnly = true)
+    public AgendamentoResponseDTO buscarPorId(Long id) {
+        return agendamentoMapper.toResponseDTO(buscarEntidadePorId(id));
+    }
+
+    @Transactional(readOnly = true)
+    public AgendamentoResponseDTO buscarPorCodigoPublico(String codigoPublico) {
+        Agendamento agendamento = agendamentoRepository.findByCodigoPublico(codigoPublico)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Agendamento não encontrado para o código informado"));
+        return agendamentoMapper.toResponseDTO(agendamento);
+    }
+
+    @Transactional(readOnly = true)
+    public Agendamento buscarEntidadePorId(Long id) {
+        return agendamentoRepository.findById(id)
+                .orElseThrow(() -> RecursoNaoEncontradoException.paraId("Agendamento", id));
+    }
+
+    @Transactional(readOnly = true)
+    public List<AgendamentoResponseDTO> listar(LocalDate data, ECategoriaServico categoria) {
+        List<Agendamento> agendamentos;
+        if (data != null && categoria != null) {
+            agendamentos = agendamentoRepository.findByDataAndCategoria(data, categoria);
+        } else if (data != null) {
+            agendamentos = agendamentoRepository.findByData(data);
+        } else if (categoria != null) {
+            agendamentos = agendamentoRepository.findByCategoria(categoria);
+        } else {
+            agendamentos = agendamentoRepository.findAll();
+        }
+        return agendamentos.stream().map(agendamentoMapper::toResponseDTO).toList();
+    }
+
+    private void validarDisponibilidade(LocalDate data, LocalTime hora) {
+        if (agendamentoRepository.existsByDataAndHoraAndStatusNot(data, hora, EStatusAgendamento.CANCELADO)) {
+            throw new RegraDeNegocioException("Já existe um agendamento ativo nesta data/horário");
+        }
+    }
+}
