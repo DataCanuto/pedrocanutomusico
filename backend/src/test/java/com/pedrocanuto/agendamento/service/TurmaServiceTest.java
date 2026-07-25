@@ -7,7 +7,10 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.pedrocanuto.agendamento.domain.Agendamento;
+import com.pedrocanuto.agendamento.domain.Aluno;
 import com.pedrocanuto.agendamento.domain.Cliente;
+import com.pedrocanuto.agendamento.domain.Endereco;
 import com.pedrocanuto.agendamento.domain.Turma;
 import com.pedrocanuto.agendamento.domain.enums.ECategoriaServico;
 import com.pedrocanuto.agendamento.domain.enums.EInstrumento;
@@ -20,8 +23,10 @@ import com.pedrocanuto.agendamento.dto.request.EnderecoRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.InscricaoTurmaRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.TurmaRequestDTO;
 import com.pedrocanuto.agendamento.dto.response.AgendamentoCriadoResponseDTO;
+import com.pedrocanuto.agendamento.dto.response.TurmaComAlunosResponseDTO;
 import com.pedrocanuto.agendamento.exception.RegraDeNegocioException;
 import com.pedrocanuto.agendamento.mapper.TurmaMapper;
+import com.pedrocanuto.agendamento.repository.AgendamentoRepository;
 import com.pedrocanuto.agendamento.repository.TurmaRepository;
 import com.pedrocanuto.agendamento.service.validation.AgendamentoValidator;
 import java.time.DayOfWeek;
@@ -42,6 +47,8 @@ class TurmaServiceTest {
     @Mock
     private TurmaRepository turmaRepository;
     @Mock
+    private AgendamentoRepository agendamentoRepository;
+    @Mock
     private TurmaMapper turmaMapper;
     @Mock
     private ClienteService clienteService;
@@ -52,8 +59,8 @@ class TurmaServiceTest {
 
     @BeforeEach
     void setUp() {
-        turmaService = new TurmaService(turmaRepository, turmaMapper, clienteService, agendamentoService,
-                new AgendamentoValidator());
+        turmaService = new TurmaService(turmaRepository, agendamentoRepository, turmaMapper, clienteService,
+                agendamentoService, new AgendamentoValidator());
     }
 
     @Test
@@ -131,6 +138,66 @@ class TurmaServiceTest {
 
         verify(agendamentoService).criarInscricaoTurma(
                 eq(cliente), eq(dto.aluno()), eq(turma), eq(ETipoContratacao.PACOTE_4), eq(dto.observacoes()));
+    }
+
+    @Test
+    void listarComAlunosAgrupaPorTurmaDedupPorAlunoEOrdenaPorDiaEHora() {
+        Turma turmaQuarta = new Turma();
+        turmaQuarta.setId(2L);
+        turmaQuarta.setCategoria(ECategoriaServico.AULA_INSTRUMENTO);
+        turmaQuarta.setInstrumento(EInstrumento.VIOLAO);
+        turmaQuarta.setDiaSemana(DayOfWeek.WEDNESDAY);
+        turmaQuarta.setHora(LocalTime.of(9, 0));
+        turmaQuarta.setStatus(EStatusTurma.ATIVA);
+
+        Turma turmaSegunda = new Turma();
+        turmaSegunda.setId(1L);
+        turmaSegunda.setCategoria(ECategoriaServico.MUSICALIZACAO_INFANTIL);
+        turmaSegunda.setDiaSemana(DayOfWeek.MONDAY);
+        turmaSegunda.setHora(LocalTime.of(16, 0));
+        turmaSegunda.setStatus(EStatusTurma.ATIVA);
+
+        // findAll() devolve fora de ordem de propósito, para provar que a ordenação por dia/hora é feita em Java (ver Javadoc de listarComAlunos)
+        when(turmaRepository.findAll()).thenReturn(List.of(turmaQuarta, turmaSegunda));
+
+        Cliente responsavel = new Cliente();
+        responsavel.setNome("Maria Souza");
+        responsavel.setTelefone("71999588950");
+        Endereco endereco = new Endereco();
+        endereco.setRua("Av. Oceânica");
+        endereco.setNumero("500");
+        endereco.setBairro("Pituba");
+        endereco.setCidade("Salvador");
+        endereco.setEstado("BA");
+        responsavel.getEnderecos().add(endereco);
+
+        Aluno sofia = new Aluno();
+        sofia.setId(10L);
+        sofia.setNome("Sofia Souza");
+        sofia.setDataNascimento(LocalDate.now().minusYears(6));
+        sofia.setResponsavel(responsavel);
+
+        // Duas aulas do mesmo pacote/turma para a mesma aluna - precisa deduplicar por aluno.id.
+        Agendamento aula1 = new Agendamento();
+        aula1.setTurma(turmaSegunda);
+        aula1.setAluno(sofia);
+        Agendamento aula2 = new Agendamento();
+        aula2.setTurma(turmaSegunda);
+        aula2.setAluno(sofia);
+        when(agendamentoRepository.listarComTurmaEAluno()).thenReturn(List.of(aula1, aula2));
+
+        List<TurmaComAlunosResponseDTO> resultado = turmaService.listarComAlunos();
+
+        assertThat(resultado).hasSize(2);
+        assertThat(resultado.get(0).diaSemana()).isEqualTo(DayOfWeek.MONDAY);
+        assertThat(resultado.get(1).diaSemana()).isEqualTo(DayOfWeek.WEDNESDAY);
+
+        assertThat(resultado.get(0).alunos()).hasSize(1);
+        assertThat(resultado.get(0).alunos().get(0).nomeAluno()).isEqualTo("Sofia Souza");
+        assertThat(resultado.get(0).alunos().get(0).telefone()).isEqualTo("71999588950");
+        assertThat(resultado.get(0).alunos().get(0).endereco()).isEqualTo("Av. Oceânica, 500 - Pituba, Salvador/BA");
+
+        assertThat(resultado.get(1).alunos()).isEmpty();
     }
 
     private EnderecoRequestDTO enderecoDTO() {

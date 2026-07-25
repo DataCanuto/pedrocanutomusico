@@ -8,7 +8,7 @@ const ACOES = [
     { to: "/admin/precos", titulo: "Ver tabela de preços", descricao: "Consulta e ajusta os valores/durações já cadastrados." },
     { to: "/admin/agenda", titulo: "Ver agenda", descricao: "Calendário com os agendamentos - por mês, semana ou dia." },
     { to: "/admin/clientes", titulo: "Ver clientes", descricao: "Lista de clientes com atalho para WhatsApp e endereço." },
-    { to: "/admin/enderecos", titulo: "Ver endereços", descricao: "Lista de endereços cadastrados por cliente." },
+    { to: "/admin/turmas/ver", titulo: "Ver turmas", descricao: "Turmas ativas com os alunos matriculados em cada uma." },
 ];
 
 export function AdminHomePage() {

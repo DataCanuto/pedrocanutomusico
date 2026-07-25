@@ -75,6 +75,8 @@ export interface ClienteListItem {
     nome: string;
     telefone: string;
     enderecoResumo: string | null;
+    /** Categoria do agendamento mais recente do cliente - null se ele ainda não tem nenhum. */
+    categoriaServico: ECategoriaServico | null;
 }
 
 export interface AlunoRequest {
@@ -305,15 +307,26 @@ export interface InscricaoTurmaRequest {
     observacoes?: string | null;
 }
 
-export interface EnderecoListItem {
+/** Uma linha do roster de uma turma - telefone/endereço são do responsável (Cliente), não do aluno. */
+export interface AlunoDaTurma {
     id: number;
-    rua: string;
-    bairro: string;
-    numero: string;
-    complemento: string | null;
-    cep: string;
-    clienteId: number;
-    clienteNome: string;
+    nomeAluno: string;
+    idade: number;
+    endereco: string | null;
+    telefone: string;
+}
+
+/** Turma + alunos matriculados nela - ver AdminVerTurmasPage. */
+export interface TurmaComAlunos {
+    id: number;
+    codigo: string;
+    categoria: ECategoriaServico;
+    instrumento: EInstrumento | null;
+    diaSemana: EDiaSemana;
+    hora: string;
+    local: string;
+    status: EStatusTurma;
+    alunos: AlunoDaTurma[];
 }
 
 export interface MusicoParceiro {

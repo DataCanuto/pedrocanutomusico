@@ -1,5 +1,7 @@
 package com.pedrocanuto.agendamento.service;
 
+import com.pedrocanuto.agendamento.domain.Agendamento;
+import com.pedrocanuto.agendamento.domain.Aluno;
 import com.pedrocanuto.agendamento.domain.Cliente;
 import com.pedrocanuto.agendamento.domain.Turma;
 import com.pedrocanuto.agendamento.domain.enums.ECategoriaServico;
@@ -7,14 +9,21 @@ import com.pedrocanuto.agendamento.domain.enums.EStatusTurma;
 import com.pedrocanuto.agendamento.dto.request.InscricaoTurmaRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.TurmaRequestDTO;
 import com.pedrocanuto.agendamento.dto.response.AgendamentoCriadoResponseDTO;
+import com.pedrocanuto.agendamento.dto.response.AlunoDaTurmaResponseDTO;
+import com.pedrocanuto.agendamento.dto.response.TurmaComAlunosResponseDTO;
 import com.pedrocanuto.agendamento.dto.response.TurmaResponseDTO;
 import com.pedrocanuto.agendamento.exception.RecursoNaoEncontradoException;
 import com.pedrocanuto.agendamento.exception.RegraDeNegocioException;
 import com.pedrocanuto.agendamento.mapper.EnderecoFormatter;
 import com.pedrocanuto.agendamento.mapper.TurmaMapper;
+import com.pedrocanuto.agendamento.repository.AgendamentoRepository;
 import com.pedrocanuto.agendamento.repository.TurmaRepository;
 import com.pedrocanuto.agendamento.service.validation.AgendamentoValidator;
 import java.security.SecureRandom;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,14 +42,17 @@ public class TurmaService {
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final TurmaRepository turmaRepository;
+    private final AgendamentoRepository agendamentoRepository;
     private final TurmaMapper turmaMapper;
     private final ClienteService clienteService;
     private final AgendamentoService agendamentoService;
     private final AgendamentoValidator validator;
 
-    public TurmaService(TurmaRepository turmaRepository, TurmaMapper turmaMapper, ClienteService clienteService,
+    public TurmaService(TurmaRepository turmaRepository, AgendamentoRepository agendamentoRepository,
+                         TurmaMapper turmaMapper, ClienteService clienteService,
                          AgendamentoService agendamentoService, AgendamentoValidator validator) {
         this.turmaRepository = turmaRepository;
+        this.agendamentoRepository = agendamentoRepository;
         this.turmaMapper = turmaMapper;
         this.clienteService = clienteService;
         this.agendamentoService = agendamentoService;
@@ -69,6 +81,61 @@ public class TurmaService {
     @Transactional(readOnly = true)
     public TurmaResponseDTO buscarPorCodigo(String codigo) {
         return turmaMapper.toResponseDTO(buscarEntidadePorCodigo(codigo));
+    }
+
+    /**
+     * Painel "ver turmas" (Q_verTurmas): cada turma com os alunos matriculados nela. Turma não
+     * tem ligação direta com Cliente/Aluno - o vínculo existe só via Agendamento#turma, e como
+     * cada pacote gera uma aula por semana (vários Agendamentos por matrícula), o mesmo aluno
+     * aparece várias vezes ali e precisa ser deduplicado por aluno.id. Ordenado por dia da semana
+     * (segunda a domingo) e depois hora - feito em Java, não em SQL: diaSemana é
+     * {@code @Enumerated(STRING)}, então um ORDER BY no banco ordenaria alfabeticamente
+     * (FRIDAY antes de MONDAY), não pela semana real.
+     */
+    @Transactional(readOnly = true)
+    public List<TurmaComAlunosResponseDTO> listarComAlunos() {
+        Map<Long, List<Aluno>> alunosPorTurma = agruparAlunosUnicosPorTurma();
+        return turmaRepository.findAll().stream()
+                .sorted(Comparator.comparing(Turma::getDiaSemana).thenComparing(Turma::getHora))
+                .map(turma -> paraTurmaComAlunos(turma, alunosPorTurma.getOrDefault(turma.getId(), List.of())))
+                .toList();
+    }
+
+    private Map<Long, List<Aluno>> agruparAlunosUnicosPorTurma() {
+        Map<Long, Map<Long, Aluno>> alunosUnicosPorTurma = new LinkedHashMap<>();
+        for (Agendamento agendamento : agendamentoRepository.listarComTurmaEAluno()) {
+            Long turmaId = agendamento.getTurma().getId();
+            Aluno aluno = agendamento.getAluno();
+            alunosUnicosPorTurma.computeIfAbsent(turmaId, id -> new LinkedHashMap<>()).putIfAbsent(aluno.getId(), aluno);
+        }
+        Map<Long, List<Aluno>> resultado = new LinkedHashMap<>();
+        alunosUnicosPorTurma.forEach((turmaId, alunos) -> resultado.put(turmaId, List.copyOf(alunos.values())));
+        return resultado;
+    }
+
+    private TurmaComAlunosResponseDTO paraTurmaComAlunos(Turma turma, List<Aluno> alunos) {
+        return new TurmaComAlunosResponseDTO(
+                turma.getId(),
+                turma.getCodigo(),
+                turma.getCategoria(),
+                turma.getInstrumento(),
+                turma.getDiaSemana(),
+                turma.getHora(),
+                turma.getLocal(),
+                turma.getStatus(),
+                alunos.stream().map(this::paraAlunoDaTurma).toList()
+        );
+    }
+
+    private AlunoDaTurmaResponseDTO paraAlunoDaTurma(Aluno aluno) {
+        Cliente responsavel = aluno.getResponsavel();
+        return new AlunoDaTurmaResponseDTO(
+                aluno.getId(),
+                aluno.getNome(),
+                aluno.getIdade(),
+                EnderecoFormatter.resumoPrimeiroEndereco(responsavel.getEnderecos()),
+                responsavel.getTelefone()
+        );
     }
 
     public AgendamentoCriadoResponseDTO inscrever(String codigo, InscricaoTurmaRequestDTO dto) {

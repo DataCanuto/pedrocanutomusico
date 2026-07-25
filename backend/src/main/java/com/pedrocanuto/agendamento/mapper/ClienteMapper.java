@@ -1,6 +1,7 @@
 package com.pedrocanuto.agendamento.mapper;
 
 import com.pedrocanuto.agendamento.domain.Cliente;
+import com.pedrocanuto.agendamento.domain.enums.ECategoriaServico;
 import com.pedrocanuto.agendamento.dto.request.ClienteRequestDTO;
 import com.pedrocanuto.agendamento.dto.response.ClienteListItemResponseDTO;
 import com.pedrocanuto.agendamento.dto.response.ClienteResponseDTO;
@@ -18,5 +19,6 @@ public interface ClienteMapper {
     ClienteResponseDTO toResponseDTO(Cliente entity);
 
     @Mapping(target = "enderecoResumo", expression = "java(EnderecoFormatter.resumoPrimeiroEndereco(entity.getEnderecos()))")
-    ClienteListItemResponseDTO toListItemResponseDTO(Cliente entity);
+    @Mapping(target = "categoriaServico", source = "categoriaServico")
+    ClienteListItemResponseDTO toListItemResponseDTO(Cliente entity, ECategoriaServico categoriaServico);
 }

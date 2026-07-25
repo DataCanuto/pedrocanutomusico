@@ -1,5 +1,5 @@
 import { api } from "./api";
-import type { AgendamentoCriadoResponse, InscricaoTurmaRequest, Turma, TurmaRequest } from "../types/domain";
+import type { AgendamentoCriadoResponse, InscricaoTurmaRequest, Turma, TurmaComAlunos, TurmaRequest } from "../types/domain";
 
 export async function buscarTurmaPorCodigo(codigo: string): Promise<Turma> {
     const { data } = await api.get<Turma>(`/turmas/${codigo}`);
@@ -14,6 +14,13 @@ export async function inscreverEmTurma(codigo: string, dto: InscricaoTurmaReques
 
 export async function criarTurma(dto: TurmaRequest, adminKey: string): Promise<Turma> {
     const { data } = await api.post<Turma>("/admin/turmas", dto, {
+        headers: { "X-Admin-Key": adminKey },
+    });
+    return data;
+}
+
+export async function listarTurmasComAlunos(adminKey: string): Promise<TurmaComAlunos[]> {
+    const { data } = await api.get<TurmaComAlunos[]>("/admin/turmas", {
         headers: { "X-Admin-Key": adminKey },
     });
     return data;
