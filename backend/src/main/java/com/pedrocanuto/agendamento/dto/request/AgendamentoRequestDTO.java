@@ -6,7 +6,6 @@ import com.pedrocanuto.agendamento.domain.enums.EModalidadeServico;
 import com.pedrocanuto.agendamento.domain.enums.ETipoContratacao;
 import com.pedrocanuto.agendamento.domain.enums.ETipoEvento;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -19,8 +18,8 @@ import java.util.List;
  * dado do cliente) - duracaoMinutosEvento é a única exceção parcial, usado apenas quando o
  * pacote de evento escolhido não tem duração padrão cadastrada (ver AgendamentoService).
  *
- * Campos condicionais por categoria (validados em AgendamentoValidator, não aqui, porque a
- * obrigatoriedade depende do valor de outro campo - Bean Validation puro não expressa isso
+ * Campos condicionais por categoria/pacote (validados em AgendamentoValidator, não aqui, porque
+ * a obrigatoriedade depende do valor de outro campo - Bean Validation puro não expressa isso
  * com legibilidade):
  * - aluno, modalidade, tipoContratacao: obrigatórios quando categoria != EVENTO, proibidos quando == EVENTO.
  * - instrumento: obrigatório apenas quando categoria == AULA_INSTRUMENTO.
@@ -30,6 +29,11 @@ import java.util.List;
  * - anamnese: opcional, só permitido quando categoria == MUSICOTERAPIA. É gravada apenas na
  *   primeira vez que o aluno agenda (ver AnamneseService.criarSeAusente) - não é obrigatória em
  *   toda reserva nem sobrescreve uma anamnese já existente.
+ * - data/hora: obrigatórios quando categoria == EVENTO ou tipoContratacao == AVULSO (uma visita
+ *   única); proibidos quando tipoContratacao é PACOTE_4/PACOTE_12.
+ * - recorrencias: obrigatório (1 a 3 itens) apenas quando tipoContratacao é PACOTE_4/PACOTE_12 -
+ *   o cliente escolhe dia(s) da semana + horário e o servidor gera todas as datas do pacote a
+ *   partir daí (ver GeradorDeDatasRecorrentes), sempre dentro da janela de 31 dias corridos.
  */
 public record AgendamentoRequestDTO(
 
@@ -61,9 +65,12 @@ public record AgendamentoRequestDTO(
         /** Só para MUSICOTERAPIA, opcional - ver javadoc da classe. */
         @Valid AnamneseMusicoterapiaRequestDTO anamnese,
 
-        @NotNull @FutureOrPresent LocalDate data,
+        LocalDate data,
 
-        @NotNull LocalTime hora,
+        LocalTime hora,
+
+        /** Só para tipoContratacao PACOTE_4/PACOTE_12 - ver javadoc da classe. */
+        List<@Valid HorarioRecorrenteRequestDTO> recorrencias,
 
         String observacoes
 ) {

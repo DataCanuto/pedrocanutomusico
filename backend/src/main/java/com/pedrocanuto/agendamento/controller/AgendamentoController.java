@@ -1,6 +1,7 @@
 package com.pedrocanuto.agendamento.controller;
 
 import com.pedrocanuto.agendamento.dto.request.AgendamentoRequestDTO;
+import com.pedrocanuto.agendamento.dto.response.AgendamentoCriadoResponseDTO;
 import com.pedrocanuto.agendamento.dto.response.AgendamentoResponseDTO;
 import com.pedrocanuto.agendamento.service.AgendamentoService;
 import jakarta.validation.Valid;
@@ -30,7 +31,7 @@ public class AgendamentoController {
     }
 
     @PostMapping
-    public ResponseEntity<AgendamentoResponseDTO> criar(@Valid @RequestBody AgendamentoRequestDTO dto) {
+    public ResponseEntity<AgendamentoCriadoResponseDTO> criar(@Valid @RequestBody AgendamentoRequestDTO dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(agendamentoService.criar(dto));
     }
 

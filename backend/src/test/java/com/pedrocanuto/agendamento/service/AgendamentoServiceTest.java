@@ -25,11 +25,13 @@ import com.pedrocanuto.agendamento.dto.request.AlunoSelecaoRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.AnamneseMusicoterapiaRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.ClienteRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.EnderecoRequestDTO;
+import com.pedrocanuto.agendamento.dto.request.HorarioRecorrenteRequestDTO;
 import com.pedrocanuto.agendamento.exception.RegraDeNegocioException;
 import com.pedrocanuto.agendamento.mapper.AgendamentoMapper;
 import com.pedrocanuto.agendamento.repository.AgendamentoRepository;
 import com.pedrocanuto.agendamento.service.validation.AgendamentoValidator;
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -147,13 +149,13 @@ class AgendamentoServiceTest {
     }
 
     @Test
-    void criarAulaComPacoteDivideValorTotalPelaQuantidadeDeAulas() {
+    void criarAulaComPacoteDivideValorTotalPelaQuantidadeDeAulasEGeraUmAgendamentoPorRecorrencia() {
         Cliente cliente = new Cliente();
         Aluno aluno = new Aluno();
         aluno.setDataNascimento(LocalDate.now().minusYears(8));
         PrecoServico preco = precoMusicalizacaoIndividualAvulso();
-        Matricula matricula = matriculaDe(preco, ETipoContratacao.PACOTE_3);
-        matricula.setValorTotal(new BigDecimal("430.00"));
+        Matricula matricula = matriculaDe(preco, ETipoContratacao.PACOTE_4);
+        matricula.setValorTotal(new BigDecimal("560.00"));
 
         when(clienteService.buscarOuCriar(any())).thenReturn(cliente);
         when(alunoService.buscarOuCriarParaResponsavel(any(), any())).thenReturn(aluno);
@@ -162,12 +164,16 @@ class AgendamentoServiceTest {
         when(agendamentoRepository.existsByDataAndHoraAndStatusNot(any(), any(), any())).thenReturn(false);
         when(agendamentoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        agendamentoService.criar(aulaRequestDTO(ECategoriaServico.MUSICALIZACAO_INFANTIL, ETipoContratacao.PACOTE_3));
+        List<HorarioRecorrenteRequestDTO> recorrencias = List.of(
+                new HorarioRecorrenteRequestDTO(DayOfWeek.TUESDAY, LocalTime.of(15, 0)),
+                new HorarioRecorrenteRequestDTO(DayOfWeek.THURSDAY, LocalTime.of(16, 0)));
+
+        agendamentoService.criar(pacoteRequestDTO(ECategoriaServico.MUSICALIZACAO_INFANTIL, ETipoContratacao.PACOTE_4, recorrencias));
 
         ArgumentCaptor<Agendamento> captor = ArgumentCaptor.forClass(Agendamento.class);
-        verify(agendamentoRepository).save(captor.capture());
-        // 430.00 / 3 aulas = 143.33 (arredondado)
-        assertThat(captor.getValue().getValorCobrado()).isEqualByComparingTo("143.33");
+        verify(agendamentoRepository, org.mockito.Mockito.times(4)).save(captor.capture());
+        // 560.00 / 4 aulas = 140.00
+        assertThat(captor.getValue().getValorCobrado()).isEqualByComparingTo("140.00");
     }
 
     @Test
@@ -187,7 +193,7 @@ class AgendamentoServiceTest {
                 new AlunoSelecaoRequestDTO(false, new AlunoRequestDTO("Sofia Souza", LocalDate.now().minusYears(3), null, null)),
                 ECategoriaServico.MUSICALIZACAO_INFANTIL, EModalidadeServico.INDIVIDUAL, ETipoContratacao.AVULSO, null,
                 null, null, null, null, null, null,
-                LocalDate.now().plusDays(3), LocalTime.of(10, 10), null);
+                LocalDate.now().plusDays(3), LocalTime.of(10, 10), null, null);
 
         assertThatThrownBy(() -> agendamentoService.criar(dto))
                 .isInstanceOf(RegraDeNegocioException.class)
@@ -343,7 +349,16 @@ class AgendamentoServiceTest {
                 new AlunoRequestDTO("Sofia Souza", LocalDate.now().minusYears(3), null, null));
         return new AgendamentoRequestDTO(clienteDTO(), aluno, categoria, EModalidadeServico.INDIVIDUAL,
                 tipoContratacao, null, null, null, null, null, null, null,
-                LocalDate.now().plusDays(3), LocalTime.of(10, 0), null);
+                LocalDate.now().plusDays(3), LocalTime.of(10, 0), null, null);
+    }
+
+    private AgendamentoRequestDTO pacoteRequestDTO(ECategoriaServico categoria, ETipoContratacao tipoContratacao,
+                                                    List<HorarioRecorrenteRequestDTO> recorrencias) {
+        AlunoSelecaoRequestDTO aluno = new AlunoSelecaoRequestDTO(false,
+                new AlunoRequestDTO("Sofia Souza", LocalDate.now().minusYears(3), null, null));
+        return new AgendamentoRequestDTO(clienteDTO(), aluno, categoria, EModalidadeServico.INDIVIDUAL,
+                tipoContratacao, null, null, null, null, null, null, null,
+                null, null, recorrencias, null);
     }
 
     private AgendamentoRequestDTO musicoterapiaRequestDTO(AnamneseMusicoterapiaRequestDTO anamnese) {
@@ -351,7 +366,7 @@ class AgendamentoServiceTest {
                 new AlunoRequestDTO("Sofia Souza", LocalDate.now().minusYears(6), null, null));
         return new AgendamentoRequestDTO(clienteDTO(), aluno, ECategoriaServico.MUSICOTERAPIA, EModalidadeServico.INDIVIDUAL,
                 ETipoContratacao.AVULSO, null, null, null, null, null, null, anamnese,
-                LocalDate.now().plusDays(3), LocalTime.of(10, 0), null);
+                LocalDate.now().plusDays(3), LocalTime.of(10, 0), null, null);
     }
 
     private AnamneseMusicoterapiaRequestDTO anamneseDTO() {
@@ -363,7 +378,7 @@ class AgendamentoServiceTest {
         EnderecoRequestDTO endereco = new EnderecoRequestDTO("41700-000", "Av. Oceânica", "500", "Pituba", "Salvador", "BA", "Salão X");
         return new AgendamentoRequestDTO(clienteDTO(), null, ECategoriaServico.EVENTO, null, null, null,
                 ETipoEvento.ANIVERSARIO, eventoPrecoServicoId, endereco, duracaoMinutosEvento,
-                List.of("Parabéns pra Você"), null, LocalDate.now().plusDays(7), LocalTime.of(16, 0), "Festa");
+                List.of("Parabéns pra Você"), null, LocalDate.now().plusDays(7), LocalTime.of(16, 0), null, "Festa");
     }
 
     private ClienteRequestDTO clienteDTO() {

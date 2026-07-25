@@ -1,9 +1,14 @@
 package com.pedrocanuto.agendamento.service.validation;
 
 import com.pedrocanuto.agendamento.domain.enums.ECategoriaServico;
+import com.pedrocanuto.agendamento.domain.enums.ETipoContratacao;
 import com.pedrocanuto.agendamento.dto.request.AgendamentoRequestDTO;
+import com.pedrocanuto.agendamento.dto.request.HorarioRecorrenteRequestDTO;
 import com.pedrocanuto.agendamento.exception.RegraDeNegocioException;
 import java.time.LocalTime;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.springframework.stereotype.Component;
 
 /**
@@ -20,8 +25,11 @@ public class AgendamentoValidator {
     private static final int GRADE_MINUTOS = 15;
 
     public void validarCamposPorCategoria(AgendamentoRequestDTO dto) {
-        validarHorario(dto.hora());
         if (dto.categoria().isEvento()) {
+            if (dto.hora() == null) {
+                throw new RegraDeNegocioException("hora é obrigatória");
+            }
+            validarHorario(dto.hora());
             validarCamposDeEvento(dto);
         } else {
             validarCamposDeAula(dto);
@@ -39,6 +47,12 @@ public class AgendamentoValidator {
     }
 
     private void validarCamposDeEvento(AgendamentoRequestDTO dto) {
+        if (dto.data() == null) {
+            throw new RegraDeNegocioException("data é obrigatória");
+        }
+        if (dto.recorrencias() != null && !dto.recorrencias().isEmpty()) {
+            throw new RegraDeNegocioException("Categoria EVENTO não deve informar recorrencias (evento não é recorrente)");
+        }
         if (dto.tipoEvento() == null) {
             throw new RegraDeNegocioException("tipoEvento é obrigatório para categoria EVENTO");
         }
@@ -84,6 +98,41 @@ public class AgendamentoValidator {
         }
         if (dto.categoria() != ECategoriaServico.MUSICOTERAPIA && dto.anamnese() != null) {
             throw new RegraDeNegocioException("anamnese só se aplica à categoria MUSICOTERAPIA");
+        }
+        validarDataOuRecorrencias(dto);
+    }
+
+    /**
+     * AVULSO é uma visita única: exige data/hora e proíbe recorrencias. PACOTE_4/PACOTE_12 é o
+     * oposto: o cliente escolhe dia(s) da semana + horário (1 a 3) e o servidor gera as datas -
+     * ver GeradorDeDatasRecorrentes - então data/hora soltos não fazem sentido aqui.
+     */
+    private void validarDataOuRecorrencias(AgendamentoRequestDTO dto) {
+        boolean ehPacote = dto.tipoContratacao() != ETipoContratacao.AVULSO;
+        if (!ehPacote) {
+            if (dto.data() == null || dto.hora() == null) {
+                throw new RegraDeNegocioException("data e hora são obrigatórias para tipoContratacao AVULSO");
+            }
+            if (dto.recorrencias() != null && !dto.recorrencias().isEmpty()) {
+                throw new RegraDeNegocioException("tipoContratacao AVULSO não deve informar recorrencias");
+            }
+            validarHorario(dto.hora());
+            return;
+        }
+        if (dto.data() != null || dto.hora() != null) {
+            throw new RegraDeNegocioException("Pacotes recorrentes não devem informar data/hora soltos - use recorrencias");
+        }
+        List<HorarioRecorrenteRequestDTO> recorrencias = dto.recorrencias();
+        if (recorrencias == null || recorrencias.isEmpty() || recorrencias.size() > 3) {
+            throw new RegraDeNegocioException("Selecione de 1 a 3 dias da semana + horário para este pacote (recorrencias)");
+        }
+        Set<HorarioRecorrenteRequestDTO> semDuplicados = new HashSet<>();
+        for (HorarioRecorrenteRequestDTO recorrencia : recorrencias) {
+            validarHorario(recorrencia.hora());
+            if (!semDuplicados.add(recorrencia)) {
+                throw new RegraDeNegocioException(
+                        "Dia da semana/horário duplicado em recorrencias: %s %s".formatted(recorrencia.diaSemana(), recorrencia.hora()));
+            }
         }
     }
 }

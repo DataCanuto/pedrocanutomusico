@@ -15,6 +15,7 @@ import com.pedrocanuto.agendamento.domain.enums.ETipoContratacao;
 import com.pedrocanuto.agendamento.dto.request.AgendamentoRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.AgendarProximaAulaRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.AlunoSelecaoRequestDTO;
+import com.pedrocanuto.agendamento.dto.response.AgendamentoCriadoResponseDTO;
 import com.pedrocanuto.agendamento.dto.response.AgendamentoResponseDTO;
 import com.pedrocanuto.agendamento.exception.RecursoNaoEncontradoException;
 import com.pedrocanuto.agendamento.exception.RegraDeNegocioException;
@@ -27,6 +28,8 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -64,13 +67,12 @@ public class AgendamentoService {
         this.agendamentoMapper = agendamentoMapper;
     }
 
-    public AgendamentoResponseDTO criar(AgendamentoRequestDTO dto) {
+    public AgendamentoCriadoResponseDTO criar(AgendamentoRequestDTO dto) {
         validator.validarCamposPorCategoria(dto);
-        validarDisponibilidade(dto.data(), dto.hora());
-
-        Cliente cliente = clienteService.buscarOuCriar(dto.cliente());
 
         if (dto.categoria().isEvento()) {
+            validarDisponibilidade(dto.data(), dto.hora());
+            Cliente cliente = clienteService.buscarOuCriar(dto.cliente());
             Agendamento agendamento = new Agendamento();
             agendamento.setCliente(cliente);
             agendamento.setCategoria(dto.categoria());
@@ -78,15 +80,57 @@ public class AgendamentoService {
             agendamento.setHora(dto.hora());
             agendamento.setObservacoes(dto.observacoes());
             preencherCamposDeEvento(agendamento, dto);
-            return agendamentoMapper.toResponseDTO(agendamentoRepository.save(agendamento));
+            AgendamentoResponseDTO resposta = agendamentoMapper.toResponseDTO(agendamentoRepository.save(agendamento));
+            return new AgendamentoCriadoResponseDTO(null, Collections.singletonList(resposta));
         }
 
+        if (dto.tipoContratacao() != ETipoContratacao.AVULSO) {
+            List<GeradorDeDatasRecorrentes.AgendaSlot> slots =
+                    GeradorDeDatasRecorrentes.gerar(dto.recorrencias(), dto.tipoContratacao().getQuantidadeAulas(), LocalDate.now());
+            slots.forEach(slot -> validarDisponibilidade(slot.data(), slot.hora()));
+            Cliente cliente = clienteService.buscarOuCriar(dto.cliente());
+            return criarPacoteRecorrente(cliente, dto, slots);
+        }
+
+        validarDisponibilidade(dto.data(), dto.hora());
+        Cliente cliente = clienteService.buscarOuCriar(dto.cliente());
         Agendamento agendamento = criarAgendamentoDeAula(cliente, dto.aluno(), dto.categoria(), dto.modalidade(),
                 dto.tipoContratacao(), dto.instrumento(), dto.data(), dto.hora(), null, null, dto.observacoes());
         if (dto.categoria() == ECategoriaServico.MUSICOTERAPIA) {
             anamneseService.criarSeAusente(agendamento.getAluno(), dto.anamnese());
         }
-        return agendamentoMapper.toResponseDTO(agendamento);
+        return new AgendamentoCriadoResponseDTO(agendamento.getMatricula().getId(),
+                Collections.singletonList(agendamentoMapper.toResponseDTO(agendamento)));
+    }
+
+    /**
+     * PACOTE_4/PACOTE_12: {@code slots} já foi gerado e validado (disponibilidade de TODAS as
+     * datas conferida) antes deste método ser chamado - reaproveita a criação da matrícula/aluno
+     * de {@link #criarAgendamentoDeAula} para a primeira aula, e gera as demais contra a mesma
+     * matrícula via {@link #criarAgendamentoIndividual}.
+     */
+    private AgendamentoCriadoResponseDTO criarPacoteRecorrente(Cliente cliente, AgendamentoRequestDTO dto,
+                                                                List<GeradorDeDatasRecorrentes.AgendaSlot> slots) {
+        GeradorDeDatasRecorrentes.AgendaSlot primeiroSlot = slots.get(0);
+        Agendamento primeiro = criarAgendamentoDeAula(cliente, dto.aluno(), dto.categoria(), dto.modalidade(),
+                dto.tipoContratacao(), dto.instrumento(), primeiroSlot.data(), primeiroSlot.hora(), null, null, dto.observacoes());
+
+        List<Agendamento> agendamentos = new ArrayList<>(slots.size());
+        agendamentos.add(primeiro);
+        for (GeradorDeDatasRecorrentes.AgendaSlot slot : slots.subList(1, slots.size())) {
+            agendamentos.add(criarAgendamentoIndividual(cliente, primeiro.getAluno(), primeiro.getMatricula(), primeiro.getPrecoServico(),
+                    dto.instrumento(), slot.data(), slot.hora(), null, null, dto.observacoes()));
+        }
+
+        if (dto.categoria() == ECategoriaServico.MUSICOTERAPIA) {
+            anamneseService.criarSeAusente(primeiro.getAluno(), dto.anamnese());
+        }
+
+        List<AgendamentoResponseDTO> respostas = new ArrayList<>(agendamentos.size());
+        for (Agendamento agendamento : agendamentos) {
+            respostas.add(agendamentoMapper.toResponseDTO(agendamento));
+        }
+        return new AgendamentoCriadoResponseDTO(primeiro.getMatricula().getId(), respostas);
     }
 
     private void preencherCamposDeEvento(Agendamento agendamento, AgendamentoRequestDTO dto) {
@@ -126,10 +170,20 @@ public class AgendamentoService {
         Aluno aluno = alunoService.buscarOuCriarParaResponsavel(cliente, alunoSelecao);
         PrecoServico precoServico = precoServicoService.buscarPorCategoriaModalidadeEPacote(categoria, modalidade, tipoContratacao);
         Matricula matricula = matriculaService.criar(cliente, aluno, precoServico, tipoContratacao, instrumento);
+        return criarAgendamentoIndividual(cliente, aluno, matricula, precoServico, instrumento, data, hora, local, turma, observacoes);
+    }
 
+    /**
+     * Monta e salva um único Agendamento contra uma Matricula já existente - núcleo reaproveitado
+     * por {@link #criarAgendamentoDeAula} (que cria a matrícula antes), pelo fluxo de pacote
+     * recorrente ({@link #criarPacoteRecorrente}) e por {@link #agendarProximaAula}.
+     */
+    private Agendamento criarAgendamentoIndividual(Cliente cliente, Aluno aluno, Matricula matricula, PrecoServico precoServico,
+                                                    EInstrumento instrumento, LocalDate data, LocalTime hora, String local,
+                                                    Turma turma, String observacoes) {
         Agendamento agendamento = new Agendamento();
         agendamento.setCliente(cliente);
-        agendamento.setCategoria(categoria);
+        agendamento.setCategoria(precoServico.getCategoria());
         agendamento.setAluno(aluno);
         agendamento.setMatricula(matricula);
         agendamento.setPrecoServico(precoServico);
@@ -163,21 +217,10 @@ public class AgendamentoService {
         validator.validarHorario(dto.hora());
         validarDisponibilidade(dto.data(), dto.hora());
 
-        PrecoServico precoServico = matricula.getPrecoServico();
-        Agendamento agendamento = new Agendamento();
-        agendamento.setCliente(matricula.getCliente());
-        agendamento.setAluno(matricula.getAluno());
-        agendamento.setMatricula(matricula);
-        agendamento.setPrecoServico(precoServico);
-        agendamento.setCategoria(precoServico.getCategoria());
-        agendamento.setInstrumento(matricula.getInstrumento());
-        agendamento.setValorCobrado(valorPorAula(matricula));
-        agendamento.setDuracaoMinutos(precoServico.getDuracaoPadraoMinutos());
-        agendamento.setData(dto.data());
-        agendamento.setHora(dto.hora());
-        agendamento.setObservacoes(dto.observacoes());
+        Agendamento agendamento = criarAgendamentoIndividual(matricula.getCliente(), matricula.getAluno(), matricula,
+                matricula.getPrecoServico(), matricula.getInstrumento(), dto.data(), dto.hora(), null, null, dto.observacoes());
 
-        return agendamentoMapper.toResponseDTO(agendamentoRepository.save(agendamento));
+        return agendamentoMapper.toResponseDTO(agendamento);
     }
 
     public AgendamentoResponseDTO definirOrcamento(Long id, BigDecimal valor) {

@@ -14,7 +14,9 @@ import com.pedrocanuto.agendamento.dto.request.AlunoSelecaoRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.AnamneseMusicoterapiaRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.ClienteRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.EnderecoRequestDTO;
+import com.pedrocanuto.agendamento.dto.request.HorarioRecorrenteRequestDTO;
 import com.pedrocanuto.agendamento.exception.RegraDeNegocioException;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -104,7 +106,7 @@ class AgendamentoValidatorTest {
         AgendamentoRequestDTO dto = new AgendamentoRequestDTO(
                 clienteDTO(), alunoSelecao(), ECategoriaServico.EVENTO, null, null, null,
                 ETipoEvento.ANIVERSARIO, 1L, enderecoEvento(), null, null, null,
-                LocalDate.now().plusDays(5), LocalTime.of(15, 0), null);
+                LocalDate.now().plusDays(5), LocalTime.of(15, 0), null, null);
         assertThatThrownBy(() -> validator.validarCamposPorCategoria(dto))
                 .isInstanceOf(RegraDeNegocioException.class)
                 .hasMessageContaining("aluno");
@@ -115,7 +117,7 @@ class AgendamentoValidatorTest {
         AgendamentoRequestDTO dto = new AgendamentoRequestDTO(
                 clienteDTO(), null, ECategoriaServico.EVENTO, null, null, null,
                 ETipoEvento.CASAMENTO, 1L, null, null, null, null,
-                LocalDate.now().plusDays(10), LocalTime.of(18, 0), null);
+                LocalDate.now().plusDays(10), LocalTime.of(18, 0), null, null);
         assertThatThrownBy(() -> validator.validarCamposPorCategoria(dto))
                 .isInstanceOf(RegraDeNegocioException.class)
                 .hasMessageContaining("enderecoEvento");
@@ -157,7 +159,7 @@ class AgendamentoValidatorTest {
         AgendamentoRequestDTO dto = new AgendamentoRequestDTO(
                 clienteDTO(), null, ECategoriaServico.EVENTO, null, null, null,
                 ETipoEvento.ANIVERSARIO, 1L, enderecoEvento(), null, null, anamneseDTO(),
-                LocalDate.now().plusDays(5), LocalTime.of(15, 0), null);
+                LocalDate.now().plusDays(5), LocalTime.of(15, 0), null, null);
         assertThatThrownBy(() -> validator.validarCamposPorCategoria(dto))
                 .isInstanceOf(RegraDeNegocioException.class)
                 .hasMessageContaining("anamnese");
@@ -176,7 +178,7 @@ class AgendamentoValidatorTest {
         return new AgendamentoRequestDTO(
                 clienteDTO(), null, ECategoriaServico.EVENTO, null, null, null,
                 ETipoEvento.ANIVERSARIO, eventoPrecoServicoId, enderecoEvento(), null, null, null,
-                LocalDate.now().plusDays(5), LocalTime.of(15, 0), "Festa de 5 anos");
+                LocalDate.now().plusDays(5), LocalTime.of(15, 0), null, "Festa de 5 anos");
     }
 
     private EnderecoRequestDTO enderecoEvento() {
@@ -189,7 +191,64 @@ class AgendamentoValidatorTest {
         return new AgendamentoRequestDTO(
                 clienteDTO(), aluno, categoria, modalidade, tipoContratacao, instrumento,
                 null, null, null, null, null, anamnese,
-                LocalDate.now().plusDays(3), LocalTime.of(10, 0), null);
+                LocalDate.now().plusDays(3), LocalTime.of(10, 0), null, null);
+    }
+
+    private AgendamentoRequestDTO pacoteDTO(ETipoContratacao tipoContratacao, List<HorarioRecorrenteRequestDTO> recorrencias) {
+        return new AgendamentoRequestDTO(
+                clienteDTO(), alunoSelecao(), ECategoriaServico.MUSICALIZACAO_INFANTIL, EModalidadeServico.INDIVIDUAL,
+                tipoContratacao, null, null, null, null, null, null, null,
+                null, null, recorrencias, null);
+    }
+
+    @Test
+    void aceitaPacoteComRecorrenciasValidas() {
+        AgendamentoRequestDTO dto = pacoteDTO(ETipoContratacao.PACOTE_4,
+                List.of(new HorarioRecorrenteRequestDTO(DayOfWeek.TUESDAY, LocalTime.of(15, 0)),
+                        new HorarioRecorrenteRequestDTO(DayOfWeek.THURSDAY, LocalTime.of(16, 0))));
+        assertThatCode(() -> validator.validarCamposPorCategoria(dto)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void rejeitaPacoteSemRecorrencias() {
+        AgendamentoRequestDTO dto = pacoteDTO(ETipoContratacao.PACOTE_4, null);
+        assertThatThrownBy(() -> validator.validarCamposPorCategoria(dto))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("recorrencias");
+    }
+
+    @Test
+    void rejeitaPacoteComMaisDeTresRecorrencias() {
+        AgendamentoRequestDTO dto = pacoteDTO(ETipoContratacao.PACOTE_12,
+                List.of(new HorarioRecorrenteRequestDTO(DayOfWeek.MONDAY, LocalTime.of(9, 0)),
+                        new HorarioRecorrenteRequestDTO(DayOfWeek.TUESDAY, LocalTime.of(9, 0)),
+                        new HorarioRecorrenteRequestDTO(DayOfWeek.WEDNESDAY, LocalTime.of(9, 0)),
+                        new HorarioRecorrenteRequestDTO(DayOfWeek.THURSDAY, LocalTime.of(9, 0))));
+        assertThatThrownBy(() -> validator.validarCamposPorCategoria(dto))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("recorrencias");
+    }
+
+    @Test
+    void rejeitaPacoteComRecorrenciaDuplicada() {
+        AgendamentoRequestDTO dto = pacoteDTO(ETipoContratacao.PACOTE_4,
+                List.of(new HorarioRecorrenteRequestDTO(DayOfWeek.TUESDAY, LocalTime.of(15, 0)),
+                        new HorarioRecorrenteRequestDTO(DayOfWeek.TUESDAY, LocalTime.of(15, 0))));
+        assertThatThrownBy(() -> validator.validarCamposPorCategoria(dto))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("duplicado");
+    }
+
+    @Test
+    void rejeitaAvulsoComRecorrenciasPreenchidas() {
+        AgendamentoRequestDTO base = aulaDTO(ECategoriaServico.MUSICALIZACAO_INFANTIL, null);
+        AgendamentoRequestDTO dto = new AgendamentoRequestDTO(
+                base.cliente(), base.aluno(), base.categoria(), base.modalidade(), base.tipoContratacao(), base.instrumento(),
+                null, null, null, null, null, null,
+                base.data(), base.hora(), List.of(new HorarioRecorrenteRequestDTO(DayOfWeek.TUESDAY, LocalTime.of(15, 0))), null);
+        assertThatThrownBy(() -> validator.validarCamposPorCategoria(dto))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("recorrencias");
     }
 
     private ClienteRequestDTO clienteDTO() {

@@ -11,6 +11,9 @@ export type EModalidadeServico = "INDIVIDUAL" | "GRUPO";
 
 export type ETipoContratacao = "AVULSO" | "PACOTE_2" | "PACOTE_3" | "PACOTE_4" | "PACOTE_12";
 
+/** Espelha java.time.DayOfWeek (Jackson serializa enums pelo nome por padrão). */
+export type EDiaSemana = "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY";
+
 export type EInstrumento =
     | "VIOLAO"
     | "UKULELE"
@@ -204,6 +207,11 @@ export interface AnamneseMusicoterapiaRequest {
     anamneseInfantil?: AnamneseInfantilRequest | null;
 }
 
+export interface HorarioRecorrenteRequest {
+    diaSemana: EDiaSemana;
+    hora: string;
+}
+
 export interface AgendamentoRequest {
     cliente: ClienteRequest;
     aluno: AlunoSelecaoRequest | null;
@@ -221,8 +229,11 @@ export interface AgendamentoRequest {
     musicasObrigatorias?: string[] | null;
     /** Só para categoria MUSICOTERAPIA - opcional, ver AnamneseMusicoterapiaRequest. */
     anamnese?: AnamneseMusicoterapiaRequest | null;
-    data: string;
-    hora: string;
+    /** Obrigatório quando categoria == EVENTO ou tipoContratacao == AVULSO; proibido para pacotes. */
+    data?: string | null;
+    hora?: string | null;
+    /** Obrigatório (1 a 3 itens) apenas quando tipoContratacao é PACOTE_4/PACOTE_12 - o backend gera todas as datas do pacote a partir daqui. */
+    recorrencias?: HorarioRecorrenteRequest[] | null;
     observacoes?: string | null;
 }
 
@@ -253,6 +264,16 @@ export interface AgendamentoResponse {
     dataHoraFinalizacao: string | null;
     observacoes: string | null;
     dataHoraAgendamento: string;
+}
+
+/**
+ * Retorno unificado de POST /api/agendamentos - sempre uma lista de agendamentos, mesmo quando é
+ * só 1 (EVENTO ou AVULSO), para o frontend não precisar tratar dois formatos de resposta.
+ * matriculaId é nulo só para EVENTO (não existe matrícula).
+ */
+export interface AgendamentoCriadoResponse {
+    matriculaId: number | null;
+    agendamentos: AgendamentoResponse[];
 }
 
 export interface TurmaRequest {

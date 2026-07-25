@@ -1,5 +1,6 @@
 import type {
     ECategoriaServico,
+    EDiaSemana,
     EInstrumento,
     EModalidadeServico,
     ESexo,
@@ -101,8 +102,11 @@ export interface AgendamentoFormValues {
     anamneseAiInteressesCrianca: string;
     anamneseAiBrincadeirasFavoritas: string;
 
+    /** Só para tipoContratacao AVULSO ou categoria EVENTO - ver HorarioFields. */
     data: string;
     hora: string;
+    /** Só para pacotes (PACOTE_4/PACOTE_12) - 1 a 3 combinações de dia da semana + horário; o backend gera as datas a partir daqui. */
+    recorrencias: { diaSemana: EDiaSemana | ""; hora: string }[];
     observacoes: string;
 }
 
@@ -193,6 +197,7 @@ export const valoresIniciais: AgendamentoFormValues = {
 
     data: "",
     hora: "",
+    recorrencias: [{ diaSemana: "", hora: "" }],
     observacoes: "",
 };
 
@@ -203,4 +208,9 @@ export function categoriaEhDeAula(categoria: ECategoriaServico | ""): boolean {
 /** Aula em grupo não tem horário livre - acontece dentro de uma Turma com data/hora/local fixados pelo professor. */
 export function ehGrupoDeAula(categoria: ECategoriaServico | "", modalidade: EModalidadeServico | ""): boolean {
     return categoriaEhDeAula(categoria) && modalidade === "GRUPO";
+}
+
+/** PACOTE_4/PACOTE_12 (ou qualquer coisa != AVULSO): o cliente escolhe dia(s) da semana + horário em vez de uma data única - ver HorarioFields. */
+export function ehPacoteRecorrente(categoria: ECategoriaServico | "", tipoContratacao: ETipoContratacao | ""): boolean {
+    return categoriaEhDeAula(categoria) && tipoContratacao !== "" && tipoContratacao !== "AVULSO";
 }

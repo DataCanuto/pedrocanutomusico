@@ -1,14 +1,43 @@
-import { useState, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState, type ReactNode } from "react";
 import { useAdminKey } from "../../hooks/useAdminKey";
+import { extrairMensagemErro } from "../../services/api";
+import { verificarAdminKey } from "../../services/adminAuthService";
 
 /**
  * Pede a chave de admin uma vez e, depois de autenticado, desenha o cabeçalho padrão (título +
  * botão "Trocar chave") de forma consistente em toda página admin - antes cada página repetia
  * esse mesmo cabeçalho, dando a impressão de que "Trocar chave" era uma ação local da página.
+ *
+ * A chave é validada contra o backend (GET /admin/auth/verificar) antes de liberar acesso.
+ * Sem isso, uma chave errada ou desatualizada em sessionStorage deixava o professor "entrar" e
+ * só descobrir o problema depois, com cada página (turmas, eventos, clientes...) falhando
+ * separadamente e sem deixar claro que a causa era a mesma chave inválida em todas elas.
  */
 export function AdminGate({ titulo, children }: { titulo: string; children: (adminKey: string) => ReactNode }) {
     const { adminKey, setAdminKey, temChave } = useAdminKey();
     const [chaveDigitada, setChaveDigitada] = useState("");
+    const [erroChave, setErroChave] = useState<string | null>(null);
+
+    const verificacao = useQuery({
+        queryKey: ["admin-key-verificacao", adminKey],
+        queryFn: () => verificarAdminKey(adminKey),
+        enabled: temChave,
+        retry: false,
+        staleTime: Infinity,
+    });
+
+    useEffect(() => {
+        if (verificacao.isError) {
+            setErroChave(extrairMensagemErro(verificacao.error, "Chave de admin inválida."));
+            setAdminKey("");
+        }
+    }, [verificacao.isError, verificacao.error, setAdminKey]);
+
+    function tentarEntrar() {
+        setErroChave(null);
+        setAdminKey(chaveDigitada);
+    }
 
     if (!temChave) {
         return (
@@ -21,13 +50,19 @@ export function AdminGate({ titulo, children }: { titulo: string; children: (adm
                     type="password"
                     value={chaveDigitada}
                     onChange={(e) => setChaveDigitada(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && chaveDigitada && tentarEntrar()}
                     placeholder="Chave de admin"
                 />
-                <button onClick={() => setAdminKey(chaveDigitada)} disabled={!chaveDigitada}>
+                <button onClick={tentarEntrar} disabled={!chaveDigitada}>
                     Entrar
                 </button>
+                {erroChave && <p className="erro-campo">{erroChave}</p>}
             </div>
         );
+    }
+
+    if (verificacao.isLoading) {
+        return <p>Verificando chave...</p>;
     }
 
     return (

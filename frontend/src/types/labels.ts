@@ -1,5 +1,6 @@
 import type {
     ECategoriaServico,
+    EDiaSemana,
     EInstrumento,
     EModalidadeServico,
     EStatusAgendamento,
@@ -28,6 +29,15 @@ export const CONTRATACAO_LABELS: Record<ETipoContratacao, string> = {
     PACOTE_12: "Pacote de 12 aulas",
 };
 
+/** Espelha ETipoContratacao.quantidadeAulas (backend) - quantas datas o cliente precisa escolher para fechar cada pacote. */
+export const QUANTIDADE_AULAS: Record<ETipoContratacao, number> = {
+    AVULSO: 1,
+    PACOTE_2: 2,
+    PACOTE_3: 3,
+    PACOTE_4: 4,
+    PACOTE_12: 12,
+};
+
 export const INSTRUMENTO_LABELS: Record<EInstrumento, string> = {
     VIOLAO: "Violão",
     UKULELE: "Ukulele",
@@ -45,6 +55,16 @@ export const TIPO_EVENTO_LABELS: Record<ETipoEvento, string> = {
     CARNAVAL: "Carnaval",
     SAO_JOAO: "São João",
     MUSICOTERAPIA_EVENTO: "Musicoterapia (evento)",
+};
+
+export const DIA_SEMANA_LABELS: Record<EDiaSemana, string> = {
+    MONDAY: "Segunda-feira",
+    TUESDAY: "Terça-feira",
+    WEDNESDAY: "Quarta-feira",
+    THURSDAY: "Quinta-feira",
+    FRIDAY: "Sexta-feira",
+    SATURDAY: "Sábado",
+    SUNDAY: "Domingo",
 };
 
 export const STATUS_AGENDAMENTO_LABELS: Record<EStatusAgendamento, string> = {

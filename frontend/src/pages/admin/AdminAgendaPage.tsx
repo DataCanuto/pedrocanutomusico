@@ -1,7 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { AdminGate } from "../../components/admin/AdminGate";
-import { listarAgendamentosAdmin } from "../../services/agendamentoAdminService";
+import {
+    definirOrcamentoAdmin,
+    listarAgendamentosAdmin,
+    transicionarStatusAdmin,
+    type AcaoDeStatus,
+} from "../../services/agendamentoAdminService";
 import { extrairMensagemErro } from "../../services/api";
 import { CATEGORIA_LABELS, STATUS_AGENDAMENTO_LABELS } from "../../types/labels";
 import {
@@ -14,9 +19,31 @@ import {
     proximoDia,
     semanaAnterior,
 } from "../../utils/calendario";
-import type { AgendamentoResponse } from "../../types/domain";
+import type { AgendamentoResponse, EStatusAgendamento } from "../../types/domain";
 
 type ModoVisualizacao = "mes" | "semana" | "dia";
+
+/** Espelha EStatusAgendamento.podeTransicionarPara (backend) - o servidor sempre revalida, isto é só para não mostrar botões que vão dar erro. */
+const ACOES_POR_STATUS: Record<EStatusAgendamento, { acao: AcaoDeStatus; label: string }[]> = {
+    AGENDADO: [
+        { acao: "confirmar", label: "Confirmar" },
+        { acao: "cancelar", label: "Cancelar" },
+        { acao: "marcar-falta", label: "Marcar falta" },
+    ],
+    CONFIRMADO: [
+        { acao: "check-in", label: "Check-in" },
+        { acao: "cancelar", label: "Cancelar" },
+        { acao: "marcar-falta", label: "Marcar falta" },
+    ],
+    CHECK_IN: [
+        { acao: "iniciar", label: "Iniciar aula" },
+        { acao: "cancelar", label: "Cancelar" },
+    ],
+    EM_ANDAMENTO: [{ acao: "finalizar", label: "Finalizar" }],
+    FINALIZADO: [],
+    CANCELADO: [],
+    FALTOU: [],
+};
 
 export function AdminAgendaPage() {
     return <AdminGate titulo="Agenda">{(adminKey) => <Agenda adminKey={adminKey} />}</AdminGate>;
@@ -34,11 +61,37 @@ function Agenda({ adminKey }: { adminKey: string }) {
     const [mes, setMes] = useState(hoje.getMonth());
     const [diaSelecionado, setDiaSelecionado] = useState<string | null>(null);
     const [dataReferencia, setDataReferencia] = useState(hojeIso());
+    const queryClient = useQueryClient();
 
     const agendamentosQuery = useQuery({
         queryKey: ["admin-agendamentos"],
         queryFn: () => listarAgendamentosAdmin(adminKey),
     });
+
+    const acaoMutation = useMutation({
+        mutationFn: ({ id, acao }: { id: number; acao: AcaoDeStatus }) => transicionarStatusAdmin(id, acao, adminKey),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-agendamentos"] }),
+    });
+
+    const orcamentoMutation = useMutation({
+        mutationFn: ({ id, valor }: { id: number; valor: number }) => definirOrcamentoAdmin(id, valor, adminKey),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-agendamentos"] }),
+    });
+
+    const acoes: AcoesAgendamento = {
+        onAcao: (id, acao) => acaoMutation.mutate({ id, acao }),
+        onDefinirOrcamento: (id, valor) => orcamentoMutation.mutate({ id, valor }),
+        idPendente: acaoMutation.isPending
+            ? (acaoMutation.variables?.id ?? null)
+            : orcamentoMutation.isPending
+              ? (orcamentoMutation.variables?.id ?? null)
+              : null,
+        erro: acaoMutation.isError
+            ? extrairMensagemErro(acaoMutation.error, "Não foi possível atualizar o status.")
+            : orcamentoMutation.isError
+              ? extrairMensagemErro(orcamentoMutation.error, "Não foi possível definir o orçamento.")
+              : null,
+    };
 
     const porDia = useMemo(() => {
         const mapa = new Map<string, AgendamentoResponse[]>();
@@ -87,33 +140,88 @@ function Agenda({ adminKey }: { adminKey: string }) {
                         setMes(novoMes);
                         setDiaSelecionado(null);
                     }}
+                    acoes={acoes}
                 />
             )}
 
             {agendamentosQuery.isSuccess && modo === "semana" && (
-                <VisaoSemana dataReferencia={dataReferencia} porDia={porDia} onMudarData={setDataReferencia} />
+                <VisaoSemana dataReferencia={dataReferencia} porDia={porDia} onMudarData={setDataReferencia} acoes={acoes} />
             )}
 
             {agendamentosQuery.isSuccess && modo === "dia" && (
-                <VisaoDia dataReferencia={dataReferencia} porDia={porDia} onMudarData={setDataReferencia} />
+                <VisaoDia dataReferencia={dataReferencia} porDia={porDia} onMudarData={setDataReferencia} acoes={acoes} />
             )}
         </>
     );
 }
 
-function ListaDoDia({ dia }: { dia: AgendamentoResponse[] }) {
+interface AcoesAgendamento {
+    onAcao: (id: number, acao: AcaoDeStatus) => void;
+    onDefinirOrcamento: (id: number, valor: number) => void;
+    idPendente: number | null;
+    erro: string | null;
+}
+
+function OrcamentoForm({ agendamento, acoes }: { agendamento: AgendamentoResponse; acoes: AcoesAgendamento }) {
+    const [valor, setValor] = useState("");
+    const pendente = acoes.idPendente === agendamento.id;
+
+    return (
+        <span className="agenda-orcamento-form">
+            <input
+                type="number"
+                min={0.01}
+                step="0.01"
+                placeholder="Valor (R$)"
+                value={valor}
+                onChange={(e) => setValor(e.target.value)}
+            />
+            <button
+                type="button"
+                disabled={pendente || !valor}
+                onClick={() => acoes.onDefinirOrcamento(agendamento.id, Number(valor))}
+            >
+                Definir orçamento
+            </button>
+        </span>
+    );
+}
+
+function ListaDoDia({ dia, acoes }: { dia: AgendamentoResponse[]; acoes: AcoesAgendamento }) {
     if (dia.length === 0) {
         return <p>Nenhum agendamento nesse dia.</p>;
     }
     return (
         <ul className="agenda-lista-dia">
-            {dia.map((agendamento) => (
-                <li key={agendamento.id}>
-                    <strong>{agendamento.hora}</strong> - {CATEGORIA_LABELS[agendamento.categoria]} -{" "}
-                    {agendamento.alunoNome ?? agendamento.clienteNome} ({agendamento.clienteNome}, {agendamento.clienteTelefone}) -{" "}
-                    {STATUS_AGENDAMENTO_LABELS[agendamento.status]}
-                </li>
-            ))}
+            {dia.map((agendamento) => {
+                const pendente = acoes.idPendente === agendamento.id;
+                const acoesDisponiveis = ACOES_POR_STATUS[agendamento.status];
+                return (
+                    <li key={agendamento.id}>
+                        <div>
+                            <strong>{agendamento.hora}</strong> - {CATEGORIA_LABELS[agendamento.categoria]} -{" "}
+                            {agendamento.alunoNome ?? agendamento.clienteNome} ({agendamento.clienteNome}, {agendamento.clienteTelefone}) -{" "}
+                            {STATUS_AGENDAMENTO_LABELS[agendamento.status]}
+                        </div>
+                        <div className="agenda-acoes">
+                            {acoesDisponiveis.map(({ acao, label }) => (
+                                <button
+                                    key={acao}
+                                    type="button"
+                                    disabled={pendente}
+                                    onClick={() => acoes.onAcao(agendamento.id, acao)}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                            {agendamento.categoria === "EVENTO" && agendamento.valorCobrado == null && (
+                                <OrcamentoForm agendamento={agendamento} acoes={acoes} />
+                            )}
+                        </div>
+                    </li>
+                );
+            })}
+            {acoes.erro && <p className="erro-campo">{acoes.erro}</p>}
         </ul>
     );
 }
@@ -125,6 +233,7 @@ function VisaoMes({
     diaSelecionado,
     onSelecionarDia,
     onMudarMes,
+    acoes,
 }: {
     ano: number;
     mes: number;
@@ -132,6 +241,7 @@ function VisaoMes({
     diaSelecionado: string | null;
     onSelecionarDia: (dia: string) => void;
     onMudarMes: (ano: number, mes: number) => void;
+    acoes: AcoesAgendamento;
 }) {
     const semanas = gerarGradeDoMes(ano, mes);
     const agendamentosDoDia = diaSelecionado ? (porDia.get(diaSelecionado) ?? []) : [];
@@ -187,7 +297,7 @@ function VisaoMes({
                     <h2>
                         {formatarDataBr(diaSelecionado)} - {agendamentosDoDia.length} agendamento{agendamentosDoDia.length === 1 ? "" : "s"}
                     </h2>
-                    <ListaDoDia dia={agendamentosDoDia} />
+                    <ListaDoDia dia={agendamentosDoDia} acoes={acoes} />
                 </div>
             )}
         </>
@@ -198,10 +308,12 @@ function VisaoSemana({
     dataReferencia,
     porDia,
     onMudarData,
+    acoes,
 }: {
     dataReferencia: string;
     porDia: Map<string, AgendamentoResponse[]>;
     onMudarData: (data: string) => void;
+    acoes: AcoesAgendamento;
 }) {
     const dias = gerarDiasDaSemana(dataReferencia);
 
@@ -221,7 +333,7 @@ function VisaoSemana({
                     return (
                         <div key={diaIso} className="agenda-semana-dia">
                             <h3>{formatarDataBr(diaIso)}</h3>
-                            <ListaDoDia dia={agendamentosDoDia} />
+                            <ListaDoDia dia={agendamentosDoDia} acoes={acoes} />
                         </div>
                     );
                 })}
@@ -234,10 +346,12 @@ function VisaoDia({
     dataReferencia,
     porDia,
     onMudarData,
+    acoes,
 }: {
     dataReferencia: string;
     porDia: Map<string, AgendamentoResponse[]>;
     onMudarData: (data: string) => void;
+    acoes: AcoesAgendamento;
 }) {
     const agendamentosDoDia = porDia.get(dataReferencia) ?? [];
 
@@ -253,7 +367,7 @@ function VisaoDia({
                 <h2>
                     {agendamentosDoDia.length} agendamento{agendamentosDoDia.length === 1 ? "" : "s"}
                 </h2>
-                <ListaDoDia dia={agendamentosDoDia} />
+                <ListaDoDia dia={agendamentosDoDia} acoes={acoes} />
             </div>
         </>
     );

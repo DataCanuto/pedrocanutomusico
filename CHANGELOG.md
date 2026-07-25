@@ -111,3 +111,46 @@ Dois arquivos novos trouxeram dado de negócio real que substituiu premissas da 
 
 - Conteúdo de Casamento/Aniversário de Adultos em `prices.txt` ficou incompleto ("violão clássico, bandolim e lira", sem preço/estrutura) - não foi modelado, fica para quando houver mais detalhe.
 - Dashboard de faturamento, cadastro de músico convidado, calendário visual administrativo e notificação automática via WhatsApp foram conscientemente deixados de fora desta rodada (ver seção "Fora de escopo" no plano da sessão) - a estrutura de dados já os suporta quando forem implementados.
+
+---
+
+## Sessão 3 — Agendamento recorrente de pacotes, fix de CORS no admin, interação com aulas na agenda (2026-07-24)
+
+### Contexto
+
+Comprar um pacote (`PACOTE_4`/`PACOTE_12`) só agendava a primeira aula - não havia tela nem endpoint público para marcar as demais (`agendarProximaAula` existia no service mas não estava exposto em nenhum controller). O usuário descreveu dois jeitos possíveis de resolver (cliente escolhe N datas soltas vs. cliente escolhe dia-da-semana+horário e o sistema gera as datas) e pediu para avaliar qual era mais prudente. Depois, ao testar a área do professor pela primeira vez nesta sessão, apareceram três problemas: turma não cadastrava, agenda/clientes não carregavam, e não dava pra interagir com o status das aulas.
+
+### Decisão de arquitetura: agendamento recorrente por dia-da-semana
+
+Optado (com validação do usuário) pelo modelo de **slots recorrentes**: o cliente escolhe de 1 a 3 combinações de dia-da-semana + horário; o backend gera todas as datas do pacote (round-robin a partir da próxima ocorrência de cada dia), sempre dentro de uma **janela de 31 dias corridos a partir de hoje** - se os dias escolhidos não derem conta disso (ex.: `PACOTE_12` com 1 dia/semana levaria ~12 semanas), a criação é rejeitada com mensagem acionável em vez de aceitar um pacote que só termina meses depois. AVULSO e EVENTO continuam com data/hora únicos - só pacotes de aula mudam de fluxo. Nenhuma tabela nova: o padrão recorrente não é persistido (mesma filosofia de `Matricula.aulasRestantes` - derivar, não guardar dado que pode dessincronizar), os `Agendamento` gerados são a única fonte da verdade.
+
+- **Backend**: `HorarioRecorrenteRequestDTO`, `GeradorDeDatasRecorrentes` (utilitário puro, sem dependência de Spring/repositório - gera as datas e valida a janela de 31 dias) e `AgendamentoCriadoResponseDTO` (`{ matriculaId, agendamentos[] }`, retorno unificado de `POST /api/agendamentos` para qualquer categoria/pacote, evitando dois contratos de resposta diferentes) são novos. `AgendamentoRequestDTO` teve `data`/`hora` tornados condicionais e ganhou `recorrencias`; `AgendamentoValidator` valida que pacotes exigem `recorrencias` (1-3, sem duplicata) e AVULSO/EVENTO exigem `data`/`hora`. `AgendamentoService.criar` foi reorganizado em três ramos (evento/avulso/pacote recorrente) reaproveitando um novo helper privado `criarAgendamentoIndividual` (também usado por `agendarProximaAula`, que passou a compartilhar a mesma construção de `Agendamento`).
+- **Frontend**: `HorarioFields.tsx` alterna entre a UI antiga (data+hora únicos, para AVULSO/EVENTO) e uma nova UI de dias recorrentes (para pacotes) com preview client-side das datas geradas (`utils/recorrencia.ts`, mesmo algoritmo do backend, só para exibição - o servidor sempre revalida). `AgendarPage.tsx`/`agendamentoService.ts` atualizados para o novo contrato de resposta (lista de aulas, não uma só).
+- **Bônus pedido junto**: pacotes de evento agora são filtrados pelo `tipoEvento` escolhido (`ServicoFields.tsx`) - antes um cliente escolhendo "Casamento" via todos os pacotes de Carnaval/Aniversário também.
+- **Testes**: `GeradorDeDatasRecorrentesTest` novo (contagem exata, ordem cronológica, rejeição por estourar 31 dias), `AgendamentoValidatorTest`/`AgendamentoServiceTest` estendidos para os novos casos condicionais.
+
+### Bug real encontrado: CORS bloqueava TODAS as rotas `/api/admin/**`
+
+Ao testar a criação de turma pela área do professor, nada funcionava - nem turma, nem agenda, nem clientes. Causa: `AdminApiKeyFilter` roda antes do Spring processar CORS; o preflight `OPTIONS` que o navegador manda antes de qualquer request nunca carrega o header `X-Admin-Key` (spec CORS não reenvia headers customizados no preflight), então o filtro rejeitava o preflight com 401 antes do Spring conseguir responder com `Access-Control-Allow-Origin` - o navegador então bloqueava a chamada real inteira por erro de CORS, mesmo com a chave certa. Corrigido em `AdminApiKeyFilter.shouldNotFilter`, que agora deixa `OPTIONS` passar livre (a requisição real seguinte continua validada normalmente - não abre brecha de segurança). Novo teste cobrindo o caso em `AdminApiKeyFilterTest`.
+
+### Nova funcionalidade: interagir com o status das aulas na agenda do admin
+
+O backend já tinha os endpoints de transição de status (`confirmar`/`check-in`/`iniciar`/`finalizar`/`cancelar`/`marcar-falta`/`orçamento`), mas `AdminAgendaPage.tsx` só listava as aulas do dia, sem nenhuma ação. Adicionados: `transicionarStatusAdmin`/`definirOrcamentoAdmin` em `agendamentoAdminService.ts`, e em `AdminAgendaPage.tsx` cada aula agora mostra os botões correspondentes ao seu status atual (espelhando `EStatusAgendamento.podeTransicionarPara` do backend, que continua sendo a autoridade real), além de um formulário de orçamento para eventos "sob consulta".
+
+### Verificação
+
+Suíte completa de testes backend passando (`mvn test`) depois de cada mudança. Validação ao vivo com backend (Spring Boot, porta 8080) e frontend (Vite, porta 5173) rodando lado a lado, dirigidos via Playwright headless:
+- Pacote de 4 aulas com terça+quinta gerou exatamente as 4 datas esperadas; pacote de 12 com 1 dia/semana foi corretamente rejeitado; fluxo completo do formulário até a confirmação sem erros de console.
+- Filtro de pacotes de evento por tipo confirmado (Casamento só mostra "Sob Consulta", Carnaval só mostra os pacotes de Carnaval).
+- Criação de turma e carregamento de agenda/clientes confirmados funcionando após o fix de CORS.
+- Ciclo completo de transição de status (Confirmar → Check-in → Iniciar aula → Finalizar) testado clicando de verdade nos botões da agenda, cada clique refletindo no banco e na tela.
+
+### Dados de teste no banco de dev
+
+Toda a verificação ao vivo usou o Postgres local do usuário (não H2) - clientes/alunos/matrículas/agendamentos/turmas de teste criados durante a sessão foram removidos manualmente via `psql` ao final (ordem segura respeitando FKs: agendamento → matrícula → aluno → cliente). Confirmado que produção usa uma `DB_URL` separada (variável de ambiente) com Flyway recriando o schema do zero - nenhum dado de teste desta sessão chega a produção.
+
+### Pendências conhecidas (novas)
+
+- **Reagendamento manual de uma aula individual pelo professor** (cliente pede pra trocar de dia depois do cadastro) - adiado por pedido explícito do usuário, "trataremos futuramente".
+- **Turma (aula em grupo) ainda usa data única, não recorrência** - `TurmaService.inscrever` só cria UM `Agendamento` por família, mesma lacuna que existia (e foi corrigida) para aulas individuais. O usuário já avisou que quer o mesmo método de dia-da-semana+horário quando formos mexer nisso - anotado em memória do projeto para a próxima sessão.
+- Dashboard de faturamento, calendário administrativo mais rico (edição de agendamento, filtros) e autenticação JWT completa (substituindo `AdminApiKeyFilter`) continuam fora de escopo, como já registrado na Sessão 2.

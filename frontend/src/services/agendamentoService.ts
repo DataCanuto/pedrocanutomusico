@@ -1,7 +1,7 @@
 import { api } from "./api";
-import type { AgendamentoRequest, AgendamentoResponse } from "../types/domain";
+import type { AgendamentoCriadoResponse, AgendamentoRequest } from "../types/domain";
 
-export async function criarAgendamento(dto: AgendamentoRequest): Promise<AgendamentoResponse> {
-    const { data } = await api.post<AgendamentoResponse>("/agendamentos", dto);
+export async function criarAgendamento(dto: AgendamentoRequest): Promise<AgendamentoCriadoResponse> {
+    const { data } = await api.post<AgendamentoCriadoResponse>("/agendamentos", dto);
     return data;
 }

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useFormContext } from "react-hook-form";
 import type { ETipoContratacao, PrecoServico } from "../../types/domain";
 import {
@@ -20,12 +21,14 @@ export function ServicoFields({ precos }: { precos: PrecoServico[] }) {
     const {
         register,
         watch,
+        setValue,
         formState: { errors },
     } = useFormContext<AgendamentoFormValues>();
 
     const categoria = watch("categoria");
     const modalidade = watch("modalidade");
     const tipoContratacao = watch("tipoContratacao");
+    const tipoEvento = watch("tipoEvento");
     const eventoPrecoServicoId = watch("eventoPrecoServicoId");
     const ehAula = categoriaEhDeAula(categoria);
     const ehGrupo = ehGrupoDeAula(categoria, modalidade);
@@ -38,9 +41,19 @@ export function ServicoFields({ precos }: { precos: PrecoServico[] }) {
 
     const precoSelecionado = pacotesDisponiveis.find((p) => p.tipoContratacao === tipoContratacao);
 
-    const pacotesDeEvento = categoria === "EVENTO" ? precos.filter((p) => p.categoria === "EVENTO") : [];
+    // Só mostra os pacotes de evento do nicho escolhido (ex.: Casamento não deve listar pacotes de Carnaval).
+    const pacotesDeEvento =
+        categoria === "EVENTO" && tipoEvento ? precos.filter((p) => p.categoria === "EVENTO" && p.tipoEvento === tipoEvento) : [];
     const pacoteSelecionado = pacotesDeEvento.find((p) => p.id === eventoPrecoServicoId);
     const precisaDuracaoManual = pacoteSelecionado != null && pacoteSelecionado.duracaoPadraoMinutos == null;
+
+    // Ao trocar o tipo de evento, o pacote escolhido anteriormente pode não pertencer mais à lista filtrada.
+    useEffect(() => {
+        if (eventoPrecoServicoId !== "" && !pacotesDeEvento.some((p) => p.id === eventoPrecoServicoId)) {
+            setValue("eventoPrecoServicoId", "");
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tipoEvento]);
 
     return (
         <fieldset className="form-section">
@@ -128,11 +141,14 @@ export function ServicoFields({ precos }: { precos: PrecoServico[] }) {
                     </select>
                     {errors.tipoEvento && <span className="erro-campo">{errors.tipoEvento.message}</span>}
 
-                    {pacotesDeEvento.length === 0 ? (
+                    {tipoEvento && pacotesDeEvento.length === 0 && (
                         <p className="aviso">
-                            Ainda não temos pacotes de evento cadastrados - fale com a gente pelo WhatsApp para montar uma proposta.
+                            Ainda não temos pacotes cadastrados para esse tipo de evento - fale com a gente pelo WhatsApp para montar
+                            uma proposta.
                         </p>
-                    ) : (
+                    )}
+
+                    {tipoEvento && pacotesDeEvento.length > 0 && (
                         <>
                             <label htmlFor="eventoPrecoServicoId">Pacote</label>
                             <select

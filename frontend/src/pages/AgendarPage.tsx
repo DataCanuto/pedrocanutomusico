@@ -3,7 +3,13 @@ import { FormProvider, useForm } from "react-hook-form";
 import { AlunoFields } from "../components/agendamento/AlunoFields";
 import { AnamneseFields } from "../components/agendamento/AnamneseFields";
 import { ClienteFields } from "../components/agendamento/ClienteFields";
-import { categoriaEhDeAula, ehGrupoDeAula, valoresIniciais, type AgendamentoFormValues } from "../components/agendamento/formTypes";
+import {
+    categoriaEhDeAula,
+    ehGrupoDeAula,
+    ehPacoteRecorrente,
+    valoresIniciais,
+    type AgendamentoFormValues,
+} from "../components/agendamento/formTypes";
 import { HorarioFields } from "../components/agendamento/HorarioFields";
 import { ServicoFields } from "../components/agendamento/ServicoFields";
 import { extrairMensagemErro } from "../services/api";
@@ -12,6 +18,7 @@ import { listarPrecos } from "../services/precoService";
 import { inscreverEmTurma } from "../services/turmaService";
 import { montarLinkWhatsApp } from "../services/whatsapp";
 import type {
+    AgendamentoCriadoResponse,
     AgendamentoRequest,
     AnamneseMusicoterapiaRequest,
     ECategoriaServico,
@@ -130,6 +137,7 @@ function paraAgendamentoRequest(v: AgendamentoFormValues): AgendamentoRequest {
     const ehAula = categoriaEhDeAula(v.categoria);
     const ehEvento = v.categoria === "EVENTO";
     const ehMusicoterapia = v.categoria === "MUSICOTERAPIA";
+    const ehPacote = ehPacoteRecorrente(v.categoria, v.tipoContratacao);
 
     return {
         cliente: clienteDoFormulario(v),
@@ -166,8 +174,13 @@ function paraAgendamentoRequest(v: AgendamentoFormValues): AgendamentoRequest {
                   .filter((musica) => musica.length > 0)
             : undefined,
         anamnese: ehMusicoterapia ? anamneseDoFormulario(v) : null,
-        data: v.data,
-        hora: v.hora,
+        data: ehPacote ? null : v.data,
+        hora: ehPacote ? null : v.hora,
+        recorrencias: ehPacote
+            ? v.recorrencias
+                  .filter((r) => r.diaSemana !== "" && r.hora !== "")
+                  .map((r) => ({ diaSemana: r.diaSemana as Exclude<typeof r.diaSemana, "">, hora: r.hora }))
+            : null,
         observacoes: v.observacoes || undefined,
     };
 }
@@ -194,21 +207,41 @@ export function AgendarPage() {
     const ehGrupo = ehGrupoDeAula(categoria, modalidade);
 
     const mutation = useMutation({
-        mutationFn: (v: AgendamentoFormValues) =>
-            ehGrupoDeAula(v.categoria, v.modalidade)
-                ? inscreverEmTurma(v.codigoTurma.trim(), paraInscricaoTurmaRequest(v))
-                : criarAgendamento(paraAgendamentoRequest(v)),
+        mutationFn: async (v: AgendamentoFormValues): Promise<AgendamentoCriadoResponse> => {
+            if (ehGrupoDeAula(v.categoria, v.modalidade)) {
+                const agendamento = await inscreverEmTurma(v.codigoTurma.trim(), paraInscricaoTurmaRequest(v));
+                return { matriculaId: agendamento.matriculaId, agendamentos: [agendamento] };
+            }
+            return criarAgendamento(paraAgendamentoRequest(v));
+        },
     });
 
     if (mutation.isSuccess) {
-        const agendamento = mutation.data;
-        const mensagem = `Olá! Acabei de agendar ${agendamento.categoria} para ${agendamento.data} às ${agendamento.hora}.`;
+        const { agendamentos } = mutation.data;
+        const primeiro = agendamentos[0];
+        const mensagem =
+            agendamentos.length > 1
+                ? `Olá! Acabei de agendar ${primeiro.categoria} (${agendamentos.length} aulas), a primeira para ${primeiro.data} às ${primeiro.hora}.`
+                : `Olá! Acabei de agendar ${primeiro.categoria} para ${primeiro.data} às ${primeiro.hora}.`;
         return (
             <div className="pagina-agendar confirmacao">
                 <h1>Agendamento recebido!</h1>
-                <p>
-                    Combinado para <strong>{agendamento.data}</strong> às <strong>{agendamento.hora}</strong>.
-                </p>
+                {agendamentos.length === 1 ? (
+                    <p>
+                        Combinado para <strong>{primeiro.data}</strong> às <strong>{primeiro.hora}</strong>.
+                    </p>
+                ) : (
+                    <>
+                        <p>Combinadas as seguintes aulas:</p>
+                        <ul>
+                            {agendamentos.map((a) => (
+                                <li key={a.id}>
+                                    <strong>{a.data}</strong> às <strong>{a.hora}</strong>
+                                </li>
+                            ))}
+                        </ul>
+                    </>
+                )}
                 <p>Confirme os detalhes com a gente no WhatsApp:</p>
                 <a className="botao-whatsapp" href={montarLinkWhatsApp(mensagem)} target="_blank" rel="noreferrer">
                     Continuar no WhatsApp
