@@ -280,7 +280,8 @@ export interface TurmaRequest {
     categoria: ECategoriaServico;
     /** Obrigatório só quando categoria = AULA_INSTRUMENTO. */
     instrumento: EInstrumento | null;
-    data: string;
+    /** Dia da semana em que a turma acontece toda semana - o backend gera as datas de cada pacote a partir daqui. */
+    diaSemana: EDiaSemana;
     hora: string;
     endereco: EnderecoRequest;
 }
@@ -290,7 +291,7 @@ export interface Turma {
     codigo: string;
     categoria: ECategoriaServico;
     instrumento: EInstrumento | null;
-    data: string;
+    diaSemana: EDiaSemana;
     hora: string;
     local: string;
     status: EStatusTurma;

@@ -3,15 +3,13 @@ package com.pedrocanuto.agendamento.service;
 import com.pedrocanuto.agendamento.domain.Cliente;
 import com.pedrocanuto.agendamento.domain.Turma;
 import com.pedrocanuto.agendamento.domain.enums.ECategoriaServico;
-import com.pedrocanuto.agendamento.domain.enums.EModalidadeServico;
 import com.pedrocanuto.agendamento.domain.enums.EStatusTurma;
 import com.pedrocanuto.agendamento.dto.request.InscricaoTurmaRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.TurmaRequestDTO;
-import com.pedrocanuto.agendamento.dto.response.AgendamentoResponseDTO;
+import com.pedrocanuto.agendamento.dto.response.AgendamentoCriadoResponseDTO;
 import com.pedrocanuto.agendamento.dto.response.TurmaResponseDTO;
 import com.pedrocanuto.agendamento.exception.RecursoNaoEncontradoException;
 import com.pedrocanuto.agendamento.exception.RegraDeNegocioException;
-import com.pedrocanuto.agendamento.mapper.AgendamentoMapper;
 import com.pedrocanuto.agendamento.mapper.EnderecoFormatter;
 import com.pedrocanuto.agendamento.mapper.TurmaMapper;
 import com.pedrocanuto.agendamento.repository.TurmaRepository;
@@ -21,9 +19,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Turma: horário de aula em grupo com um código curto que as famílias usam para matricular seus
- * alunos. Cada família recebe sua própria Matricula/Agendamento (preço de grupo é por aluno,
- * não uma taxa única da turma) - reaproveita {@link AgendamentoService#criarAgendamentoDeAula}.
+ * Turma: horário recorrente de aula em grupo com um código curto que as famílias usam para
+ * matricular seus alunos. Cada família recebe sua própria Matricula e uma sequência de
+ * Agendamentos (um por aula do pacote escolhido, gerados a partir do dia da semana/horário
+ * fixados na Turma) - reaproveita {@link AgendamentoService#criarInscricaoTurma}.
  */
 @Service
 @Transactional
@@ -38,17 +37,14 @@ public class TurmaService {
     private final ClienteService clienteService;
     private final AgendamentoService agendamentoService;
     private final AgendamentoValidator validator;
-    private final AgendamentoMapper agendamentoMapper;
 
     public TurmaService(TurmaRepository turmaRepository, TurmaMapper turmaMapper, ClienteService clienteService,
-                         AgendamentoService agendamentoService, AgendamentoValidator validator,
-                         AgendamentoMapper agendamentoMapper) {
+                         AgendamentoService agendamentoService, AgendamentoValidator validator) {
         this.turmaRepository = turmaRepository;
         this.turmaMapper = turmaMapper;
         this.clienteService = clienteService;
         this.agendamentoService = agendamentoService;
         this.validator = validator;
-        this.agendamentoMapper = agendamentoMapper;
     }
 
     public TurmaResponseDTO criar(TurmaRequestDTO dto) {
@@ -75,17 +71,14 @@ public class TurmaService {
         return turmaMapper.toResponseDTO(buscarEntidadePorCodigo(codigo));
     }
 
-    public AgendamentoResponseDTO inscrever(String codigo, InscricaoTurmaRequestDTO dto) {
+    public AgendamentoCriadoResponseDTO inscrever(String codigo, InscricaoTurmaRequestDTO dto) {
         Turma turma = buscarEntidadePorCodigo(codigo);
         if (turma.getStatus() != EStatusTurma.ATIVA) {
             throw new RegraDeNegocioException("Esta turma não está mais aceitando inscrições");
         }
 
         Cliente cliente = clienteService.buscarOuCriar(dto.cliente());
-        var agendamento = agendamentoService.criarAgendamentoDeAula(cliente, dto.aluno(), turma.getCategoria(),
-                EModalidadeServico.GRUPO, dto.tipoContratacao(), turma.getInstrumento(), turma.getData(), turma.getHora(),
-                turma.getLocal(), turma, dto.observacoes());
-        return agendamentoMapper.toResponseDTO(agendamento);
+        return agendamentoService.criarInscricaoTurma(cliente, dto.aluno(), turma, dto.tipoContratacao(), dto.observacoes());
     }
 
     private Turma buscarEntidadePorCodigo(String codigo) {

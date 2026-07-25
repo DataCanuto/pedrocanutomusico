@@ -4,11 +4,12 @@ import { AdminGate } from "../../components/admin/AdminGate";
 import { extrairMensagemErro } from "../../services/api";
 import { criarTurma } from "../../services/turmaService";
 import { gerarSlotsDeHorario } from "../../utils/horarios";
-import { CATEGORIA_LABELS, INSTRUMENTO_LABELS } from "../../types/labels";
-import type { ECategoriaServico, EInstrumento } from "../../types/domain";
+import { CATEGORIA_LABELS, DIA_SEMANA_LABELS, INSTRUMENTO_LABELS } from "../../types/labels";
+import type { ECategoriaServico, EDiaSemana, EInstrumento } from "../../types/domain";
 
 const CATEGORIAS_DE_AULA = Object.keys(CATEGORIA_LABELS).filter((c) => c !== "EVENTO") as ECategoriaServico[];
 const TODOS_INSTRUMENTOS = Object.keys(INSTRUMENTO_LABELS) as EInstrumento[];
+const DIAS_SEMANA = Object.keys(DIA_SEMANA_LABELS) as EDiaSemana[];
 const SLOTS = gerarSlotsDeHorario();
 
 export function AdminTurmasPage() {
@@ -18,7 +19,7 @@ export function AdminTurmasPage() {
 function CadastroDeTurma({ adminKey }: { adminKey: string }) {
     const [categoria, setCategoria] = useState<ECategoriaServico | "">("");
     const [instrumento, setInstrumento] = useState<EInstrumento | "">("");
-    const [data, setData] = useState("");
+    const [diaSemana, setDiaSemana] = useState<EDiaSemana | "">("");
     const [hora, setHora] = useState("");
     const [cep, setCep] = useState("");
     const [rua, setRua] = useState("");
@@ -35,15 +36,13 @@ function CadastroDeTurma({ adminKey }: { adminKey: string }) {
                 {
                     categoria: categoria as ECategoriaServico,
                     instrumento: ehInstrumento ? (instrumento as EInstrumento) : null,
-                    data,
+                    diaSemana: diaSemana as EDiaSemana,
                     hora,
                     endereco: { cep, rua, numero, bairro, cidade, estado, complemento: complemento || undefined },
                 },
                 adminKey,
             ),
     });
-
-    const hoje = new Date().toISOString().split("T")[0];
 
     return (
         <>
@@ -92,8 +91,19 @@ function CadastroDeTurma({ adminKey }: { adminKey: string }) {
                             </>
                         )}
 
-                        <label htmlFor="data">Data</label>
-                        <input id="data" type="date" min={hoje} value={data} onChange={(e) => setData(e.target.value)} required />
+                        <label htmlFor="diaSemana">Dia da semana</label>
+                        <select id="diaSemana" value={diaSemana} onChange={(e) => setDiaSemana(e.target.value as EDiaSemana)} required>
+                            <option value="">Selecione...</option>
+                            {DIAS_SEMANA.map((dia) => (
+                                <option key={dia} value={dia}>
+                                    {DIA_SEMANA_LABELS[dia]}
+                                </option>
+                            ))}
+                        </select>
+                        <p className="aviso">
+                            A turma acontece toda semana neste dia e horário. Cada família que se matricular recebe automaticamente
+                            todas as aulas do pacote escolhido, geradas dentro de 31 dias corridos a partir da inscrição.
+                        </p>
 
                         <label htmlFor="hora">Horário</label>
                         <select id="hora" value={hora} onChange={(e) => setHora(e.target.value)} required>

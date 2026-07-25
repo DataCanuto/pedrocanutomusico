@@ -13,7 +13,7 @@ export interface AgendamentoFormValues {
     categoria: ECategoriaServico | "";
     modalidade: EModalidadeServico | "";
     tipoContratacao: ETipoContratacao | "";
-    /** Só para modalidade GRUPO: aula em grupo acontece dentro de uma Turma com data/hora/local já fixados pelo professor. */
+    /** Só para modalidade GRUPO: aula em grupo acontece dentro de uma Turma com dia da semana/hora/local já fixados pelo professor. */
     codigoTurma: string;
     instrumento: EInstrumento | "";
     tipoEvento: ETipoEvento | "";
@@ -205,7 +205,7 @@ export function categoriaEhDeAula(categoria: ECategoriaServico | ""): boolean {
     return categoria !== "" && categoria !== "EVENTO";
 }
 
-/** Aula em grupo não tem horário livre - acontece dentro de uma Turma com data/hora/local fixados pelo professor. */
+/** Aula em grupo não tem horário livre - acontece dentro de uma Turma com dia da semana/hora/local fixados pelo professor. */
 export function ehGrupoDeAula(categoria: ECategoriaServico | "", modalidade: EModalidadeServico | ""): boolean {
     return categoriaEhDeAula(categoria) && modalidade === "GRUPO";
 }

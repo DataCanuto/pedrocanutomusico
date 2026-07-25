@@ -15,6 +15,7 @@ import com.pedrocanuto.agendamento.domain.enums.ETipoContratacao;
 import com.pedrocanuto.agendamento.dto.request.AgendamentoRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.AgendarProximaAulaRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.AlunoSelecaoRequestDTO;
+import com.pedrocanuto.agendamento.dto.request.HorarioRecorrenteRequestDTO;
 import com.pedrocanuto.agendamento.dto.response.AgendamentoCriadoResponseDTO;
 import com.pedrocanuto.agendamento.dto.response.AgendamentoResponseDTO;
 import com.pedrocanuto.agendamento.exception.RecursoNaoEncontradoException;
@@ -44,6 +45,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class AgendamentoService {
 
+    /**
+     * Intervalo mínimo obrigatório entre o fim de um compromisso (aula/evento) e o início do
+     * próximo, para o professor ter tempo de transição - ver {@link #validarDisponibilidade}.
+     */
+    private static final int MINUTOS_INTERVALO_ENTRE_COMPROMISSOS = 30;
+
     private final AgendamentoRepository agendamentoRepository;
     private final ClienteService clienteService;
     private final AlunoService alunoService;
@@ -71,7 +78,10 @@ public class AgendamentoService {
         validator.validarCamposPorCategoria(dto);
 
         if (dto.categoria().isEvento()) {
-            validarDisponibilidade(dto.data(), dto.hora());
+            PrecoServico pacote = precoServicoService.buscarPacoteDeEvento(dto.eventoPrecoServicoId());
+            int duracaoMinutos = resolverDuracaoDoEvento(pacote, dto.duracaoMinutosEvento());
+            validarDisponibilidade(dto.data(), dto.hora(), duracaoMinutos);
+
             Cliente cliente = clienteService.buscarOuCriar(dto.cliente());
             Agendamento agendamento = new Agendamento();
             agendamento.setCliente(cliente);
@@ -79,22 +89,33 @@ public class AgendamentoService {
             agendamento.setData(dto.data());
             agendamento.setHora(dto.hora());
             agendamento.setObservacoes(dto.observacoes());
-            preencherCamposDeEvento(agendamento, dto);
+            agendamento.setTipoEvento(dto.tipoEvento());
+            agendamento.setLocal(EnderecoFormatter.resumo(dto.enderecoEvento()));
+            agendamento.setPrecoServico(pacote);
+            // valorCobrado fica nulo quando o pacote escolhido é "sob consulta" - o professor define
+            // depois via definirOrcamento(). Pacotes com preço fixo já saem cobrados na hora.
+            agendamento.setValorCobrado(pacote.getValor());
+            agendamento.setDuracaoMinutos(duracaoMinutos);
+            if (dto.musicasObrigatorias() != null) {
+                agendamento.getMusicasObrigatorias().addAll(dto.musicasObrigatorias());
+            }
             AgendamentoResponseDTO resposta = agendamentoMapper.toResponseDTO(agendamentoRepository.save(agendamento));
             return new AgendamentoCriadoResponseDTO(null, Collections.singletonList(resposta));
         }
 
+        PrecoServico precoServico = precoServicoService.buscarPorCategoriaModalidadeEPacote(dto.categoria(), dto.modalidade(), dto.tipoContratacao());
+
         if (dto.tipoContratacao() != ETipoContratacao.AVULSO) {
             List<GeradorDeDatasRecorrentes.AgendaSlot> slots =
                     GeradorDeDatasRecorrentes.gerar(dto.recorrencias(), dto.tipoContratacao().getQuantidadeAulas(), LocalDate.now());
-            slots.forEach(slot -> validarDisponibilidade(slot.data(), slot.hora()));
+            slots.forEach(slot -> validarDisponibilidade(slot.data(), slot.hora(), precoServico.getDuracaoPadraoMinutos()));
             Cliente cliente = clienteService.buscarOuCriar(dto.cliente());
-            return criarPacoteRecorrente(cliente, dto, slots);
+            return criarPacoteRecorrente(cliente, dto, precoServico, slots);
         }
 
-        validarDisponibilidade(dto.data(), dto.hora());
+        validarDisponibilidade(dto.data(), dto.hora(), precoServico.getDuracaoPadraoMinutos());
         Cliente cliente = clienteService.buscarOuCriar(dto.cliente());
-        Agendamento agendamento = criarAgendamentoDeAula(cliente, dto.aluno(), dto.categoria(), dto.modalidade(),
+        Agendamento agendamento = criarAgendamentoDeAula(cliente, dto.aluno(), precoServico,
                 dto.tipoContratacao(), dto.instrumento(), dto.data(), dto.hora(), null, null, dto.observacoes());
         if (dto.categoria() == ECategoriaServico.MUSICOTERAPIA) {
             anamneseService.criarSeAusente(agendamento.getAluno(), dto.anamnese());
@@ -105,20 +126,20 @@ public class AgendamentoService {
 
     /**
      * PACOTE_4/PACOTE_12: {@code slots} já foi gerado e validado (disponibilidade de TODAS as
-     * datas conferida) antes deste método ser chamado - reaproveita a criação da matrícula/aluno
-     * de {@link #criarAgendamentoDeAula} para a primeira aula, e gera as demais contra a mesma
-     * matrícula via {@link #criarAgendamentoIndividual}.
+     * datas conferida, respeitando duração + intervalo) antes deste método ser chamado -
+     * reaproveita a criação da matrícula/aluno de {@link #criarAgendamentoDeAula} para a primeira
+     * aula, e gera as demais contra a mesma matrícula via {@link #criarAgendamentoIndividual}.
      */
-    private AgendamentoCriadoResponseDTO criarPacoteRecorrente(Cliente cliente, AgendamentoRequestDTO dto,
+    private AgendamentoCriadoResponseDTO criarPacoteRecorrente(Cliente cliente, AgendamentoRequestDTO dto, PrecoServico precoServico,
                                                                 List<GeradorDeDatasRecorrentes.AgendaSlot> slots) {
         GeradorDeDatasRecorrentes.AgendaSlot primeiroSlot = slots.get(0);
-        Agendamento primeiro = criarAgendamentoDeAula(cliente, dto.aluno(), dto.categoria(), dto.modalidade(),
+        Agendamento primeiro = criarAgendamentoDeAula(cliente, dto.aluno(), precoServico,
                 dto.tipoContratacao(), dto.instrumento(), primeiroSlot.data(), primeiroSlot.hora(), null, null, dto.observacoes());
 
         List<Agendamento> agendamentos = new ArrayList<>(slots.size());
         agendamentos.add(primeiro);
         for (GeradorDeDatasRecorrentes.AgendaSlot slot : slots.subList(1, slots.size())) {
-            agendamentos.add(criarAgendamentoIndividual(cliente, primeiro.getAluno(), primeiro.getMatricula(), primeiro.getPrecoServico(),
+            agendamentos.add(criarAgendamentoIndividual(cliente, primeiro.getAluno(), primeiro.getMatricula(), precoServico,
                     dto.instrumento(), slot.data(), slot.hora(), null, null, dto.observacoes()));
         }
 
@@ -133,19 +154,38 @@ public class AgendamentoService {
         return new AgendamentoCriadoResponseDTO(primeiro.getMatricula().getId(), respostas);
     }
 
-    private void preencherCamposDeEvento(Agendamento agendamento, AgendamentoRequestDTO dto) {
-        PrecoServico pacote = precoServicoService.buscarPacoteDeEvento(dto.eventoPrecoServicoId());
+    /**
+     * Inscrição de uma família numa Turma (ver TurmaService): gera todas as datas do pacote a
+     * partir do dia da semana/horário fixados na Turma (não escolhidos pela família, ao contrário
+     * do pacote individual em {@link #criar}) usando a mesma {@link GeradorDeDatasRecorrentes},
+     * e cria um Agendamento por aula contra uma única Matricula. Turma é aula em GRUPO - várias
+     * famílias podem ocupar o mesmo slot, então (diferente de {@link #criar}) não há checagem de
+     * disponibilidade aqui.
+     */
+    AgendamentoCriadoResponseDTO criarInscricaoTurma(Cliente cliente, AlunoSelecaoRequestDTO alunoSelecao, Turma turma,
+                                                      ETipoContratacao tipoContratacao, String observacoes) {
+        PrecoServico precoServico =
+                precoServicoService.buscarPorCategoriaModalidadeEPacote(turma.getCategoria(), EModalidadeServico.GRUPO, tipoContratacao);
+        List<HorarioRecorrenteRequestDTO> recorrencia = List.of(new HorarioRecorrenteRequestDTO(turma.getDiaSemana(), turma.getHora()));
+        List<GeradorDeDatasRecorrentes.AgendaSlot> slots =
+                GeradorDeDatasRecorrentes.gerar(recorrencia, tipoContratacao.getQuantidadeAulas(), LocalDate.now());
 
-        agendamento.setTipoEvento(dto.tipoEvento());
-        agendamento.setLocal(EnderecoFormatter.resumo(dto.enderecoEvento()));
-        agendamento.setPrecoServico(pacote);
-        // valorCobrado fica nulo quando o pacote escolhido é "sob consulta" - o professor define
-        // depois via definirOrcamento(). Pacotes com preço fixo já saem cobrados na hora.
-        agendamento.setValorCobrado(pacote.getValor());
-        agendamento.setDuracaoMinutos(resolverDuracaoDoEvento(pacote, dto.duracaoMinutosEvento()));
-        if (dto.musicasObrigatorias() != null) {
-            agendamento.getMusicasObrigatorias().addAll(dto.musicasObrigatorias());
+        GeradorDeDatasRecorrentes.AgendaSlot primeiroSlot = slots.get(0);
+        Agendamento primeiro = criarAgendamentoDeAula(cliente, alunoSelecao, precoServico,
+                tipoContratacao, turma.getInstrumento(), primeiroSlot.data(), primeiroSlot.hora(), turma.getLocal(), turma, observacoes);
+
+        List<Agendamento> agendamentos = new ArrayList<>(slots.size());
+        agendamentos.add(primeiro);
+        for (GeradorDeDatasRecorrentes.AgendaSlot slot : slots.subList(1, slots.size())) {
+            agendamentos.add(criarAgendamentoIndividual(cliente, primeiro.getAluno(), primeiro.getMatricula(), precoServico,
+                    turma.getInstrumento(), slot.data(), slot.hora(), turma.getLocal(), turma, observacoes));
         }
+
+        List<AgendamentoResponseDTO> respostas = new ArrayList<>(agendamentos.size());
+        for (Agendamento agendamento : agendamentos) {
+            respostas.add(agendamentoMapper.toResponseDTO(agendamento));
+        }
+        return new AgendamentoCriadoResponseDTO(primeiro.getMatricula().getId(), respostas);
     }
 
     private int resolverDuracaoDoEvento(PrecoServico pacote, Integer duracaoInformadaPeloCliente) {
@@ -162,13 +202,14 @@ public class AgendamentoService {
     /**
      * Núcleo compartilhado entre a criação direta de agendamento de aula e a inscrição em Turma
      * (ver TurmaService) - a única diferença entre os dois fluxos é de onde vêm data/hora/local/
-     * turma (do request direto, ou fixados pela Turma).
+     * turma (do request direto, ou fixados pela Turma). precoServico já vem resolvido pelo
+     * chamador (que precisa da duração para {@link #validarDisponibilidade} antes de chegar
+     * aqui), evitando resolvê-lo de novo.
      */
-    Agendamento criarAgendamentoDeAula(Cliente cliente, AlunoSelecaoRequestDTO alunoSelecao, ECategoriaServico categoria,
-                                        EModalidadeServico modalidade, ETipoContratacao tipoContratacao, EInstrumento instrumento,
+    Agendamento criarAgendamentoDeAula(Cliente cliente, AlunoSelecaoRequestDTO alunoSelecao, PrecoServico precoServico,
+                                        ETipoContratacao tipoContratacao, EInstrumento instrumento,
                                         LocalDate data, LocalTime hora, String local, Turma turma, String observacoes) {
         Aluno aluno = alunoService.buscarOuCriarParaResponsavel(cliente, alunoSelecao);
-        PrecoServico precoServico = precoServicoService.buscarPorCategoriaModalidadeEPacote(categoria, modalidade, tipoContratacao);
         Matricula matricula = matriculaService.criar(cliente, aluno, precoServico, tipoContratacao, instrumento);
         return criarAgendamentoIndividual(cliente, aluno, matricula, precoServico, instrumento, data, hora, local, turma, observacoes);
     }
@@ -215,7 +256,7 @@ public class AgendamentoService {
             throw new RegraDeNegocioException("Pacote sem aulas restantes - feche um novo pacote para continuar agendando");
         }
         validator.validarHorario(dto.hora());
-        validarDisponibilidade(dto.data(), dto.hora());
+        validarDisponibilidade(dto.data(), dto.hora(), matricula.getPrecoServico().getDuracaoPadraoMinutos());
 
         Agendamento agendamento = criarAgendamentoIndividual(matricula.getCliente(), matricula.getAluno(), matricula,
                 matricula.getPrecoServico(), matricula.getInstrumento(), dto.data(), dto.hora(), null, null, dto.observacoes());
@@ -306,9 +347,34 @@ public class AgendamentoService {
         return agendamentos.stream().map(agendamentoMapper::toResponseDTO).toList();
     }
 
-    private void validarDisponibilidade(LocalDate data, LocalTime hora) {
-        if (agendamentoRepository.existsByDataAndHoraAndStatusNot(data, hora, EStatusAgendamento.CANCELADO)) {
-            throw new RegraDeNegocioException("Já existe um agendamento ativo nesta data/horário");
+    /**
+     * A agenda do professor é derivada diretamente dos Agendamentos ativos (não-cancelados) do
+     * dia: um novo compromisso só pode começar depois que o anterior termina + os
+     * {@link #MINUTOS_INTERVALO_ENTRE_COMPROMISSOS} minutos de intervalo (e, simetricamente, só
+     * pode terminar + intervalo antes que o próximo já marcado comece) - ex.: aula de 30 min às
+     * 15h bloqueia 15h-15:59; aula de 50 min às 15h bloqueia 15h-16:29. Comparação em minutos
+     * inteiros desde a meia-noite (em vez de LocalTime.plusMinutes) para não estourar a virada
+     * do dia com durações longas.
+     */
+    private void validarDisponibilidade(LocalDate data, LocalTime hora, int duracaoMinutos) {
+        int inicioNovo = minutosDoDia(hora);
+        int fimNovoComIntervalo = inicioNovo + duracaoMinutos + MINUTOS_INTERVALO_ENTRE_COMPROMISSOS;
+
+        boolean conflita = agendamentoRepository.findByDataAndStatusNot(data, EStatusAgendamento.CANCELADO).stream()
+                .anyMatch(existente -> {
+                    int inicioExistente = minutosDoDia(existente.getHora());
+                    int fimExistenteComIntervalo = inicioExistente + existente.getDuracaoMinutos() + MINUTOS_INTERVALO_ENTRE_COMPROMISSOS;
+                    return inicioNovo < fimExistenteComIntervalo && inicioExistente < fimNovoComIntervalo;
+                });
+
+        if (conflita) {
+            throw new RegraDeNegocioException(
+                    "Horário indisponível - já existe um compromisso agendado que não deixa os %d minutos de intervalo necessários antes/depois"
+                            .formatted(MINUTOS_INTERVALO_ENTRE_COMPROMISSOS));
         }
+    }
+
+    private static int minutosDoDia(LocalTime hora) {
+        return hora.getHour() * 60 + hora.getMinute();
     }
 }

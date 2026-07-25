@@ -152,5 +152,48 @@ Toda a verificação ao vivo usou o Postgres local do usuário (não H2) - clien
 ### Pendências conhecidas (novas)
 
 - **Reagendamento manual de uma aula individual pelo professor** (cliente pede pra trocar de dia depois do cadastro) - adiado por pedido explícito do usuário, "trataremos futuramente".
-- **Turma (aula em grupo) ainda usa data única, não recorrência** - `TurmaService.inscrever` só cria UM `Agendamento` por família, mesma lacuna que existia (e foi corrigida) para aulas individuais. O usuário já avisou que quer o mesmo método de dia-da-semana+horário quando formos mexer nisso - anotado em memória do projeto para a próxima sessão.
 - Dashboard de faturamento, calendário administrativo mais rico (edição de agendamento, filtros) e autenticação JWT completa (substituindo `AdminApiKeyFilter`) continuam fora de escopo, como já registrado na Sessão 2.
+
+---
+
+## Sessão 4 — Turma passa a usar dia da semana recorrente, igual ao pacote individual (2026-07-25)
+
+### Contexto
+
+Pendência da Sessão 3: `Turma` fixava uma `data` (LocalDate) única, e `TurmaService.inscrever` sempre criava UM único `Agendamento` por família, ignorando quantas aulas o pacote escolhido (`PACOTE_2/3/4`) realmente contratava. O usuário pediu para alinhar o cadastro de Turma (`/admin/turmas`) ao mesmo modelo já usado no agendamento individual recorrente: o professor define um dia da semana + horário fixos, e o sistema gera automaticamente as datas de cada pacote dentro da janela de 31 dias corridos (mesma regra de `GeradorDeDatasRecorrentes`).
+
+### Mudança
+
+- **Banco**: migration `V4__turma_dia_semana_recorrente.sql` troca `turma.data DATE` por `turma.dia_semana VARCHAR(10)`. Projeto ainda não foi para produção - a coluna foi trocada direto (com um `DEFAULT` temporário só para não quebrar turmas de teste já existentes no banco local, removido em seguida).
+- **Backend**: `Turma.diaSemana` (`DayOfWeek`) substitui `Turma.data`; mesma troca em `TurmaRequestDTO`/`TurmaResponseDTO` (`TurmaMapper` continua auto-mapeando por nome, sem mudança). O núcleo da mudança é `AgendamentoService.criarInscricaoTurma` (novo, package-private): gera N `AgendaSlot`s a partir do dia/hora da Turma via `GeradorDeDatasRecorrentes` (quantidade = `tipoContratacao.getQuantidadeAulas()`) e cria um `Agendamento` por aula contra uma única `Matricula`, reaproveitando os mesmos helpers já usados pelo pacote individual (`criarAgendamentoDeAula`/`criarAgendamentoIndividual`). Como Turma é aula em GRUPO (vários alunos podem ocupar o mesmo slot), essa rotina não faz a checagem de disponibilidade que o fluxo individual faz. `TurmaService.inscrever` e `TurmaController` passam a devolver `AgendamentoCriadoResponseDTO` (mesmo contrato de `POST /api/agendamentos`) em vez de um único `AgendamentoResponseDTO`.
+- **Frontend**: `AdminTurmasPage.tsx` troca o campo de data por um select de dia da semana (reaproveita `DIA_SEMANA_LABELS`). `TurmaCampos.tsx` (formulário do cliente, que busca a turma pelo código antes de se matricular) agora mostra "Toda [dia da semana] às [hora]" e um preview das datas que serão geradas para o pacote já escolhido (reaproveita `gerarPreviewDeDatas` de `utils/recorrencia.ts`, o mesmo usado no pacote individual). `inscreverEmTurma` passou a retornar `AgendamentoCriadoResponse`, simplificando `AgendarPage.tsx` (não precisa mais empacotar manualmente um único agendamento numa lista de 1).
+- **Testes**: `TurmaServiceTest` atualizado para verificar que `inscrever` delega para `criarInscricaoTurma` com os dados corretos da Turma; novo teste em `AgendamentoServiceTest` (`criarInscricaoTurmaGeraUmAgendamentoPorAulaDoPacoteNoDiaEHoraDaTurma`) confirma que um `PACOTE_4` gera exatamente 4 `Agendamento`s, todos no dia da semana/horário da Turma, sem checar disponibilidade.
+
+### Verificação
+
+Suíte completa de testes backend (`mvn test`) e typecheck do frontend (`tsc -b`) passando, incluindo a migration V4 aplicada com sucesso no banco de teste (H2) via Flyway.
+
+---
+
+## Sessão 5 — Regra de disponibilidade da agenda: duração + intervalo de 30min entre compromissos (2026-07-25)
+
+### Contexto
+
+`validarDisponibilidade` só checava colisão exata de `data+hora` (`existsByDataAndHoraAndStatusNot`) - duas aulas em horários próximos, mas não idênticos, podiam ser marcadas mesmo se uma invadisse o tempo da outra (ex.: aula de 50 min às 15h não impedia outra marcação às 15h15). O usuário pediu a regra fundamental da agenda do professor: um compromisso de duração D às H bloqueia até H+D+30min (intervalo mínimo de transição); ex.: 30 min às 15h bloqueia 15h-15:59 (16h livre), 50 min às 15h bloqueia 15h-16:29 (16:30 livre).
+
+### Mudança
+
+- `AgendamentoRepository.existsByDataAndHoraAndStatusNot` (só checava a hora exata) foi substituído por `findByDataAndStatusNot(data, status)`, que traz todos os compromissos ativos do dia para checagem em memória.
+- `AgendamentoService.validarDisponibilidade` ganhou um parâmetro `duracaoMinutos` e agora compara intervalos `[início, início + duração + 30min)` em minutos inteiros desde a meia-noite (evita o estouro de virada de dia que `LocalTime.plusMinutes` teria com durações longas) - dois compromissos conflitam se um começa antes do outro terminar + intervalo, nos dois sentidos (simétrico: cobre tanto "cabe depois" quanto "cabe antes" do compromisso já existente).
+- Como a duração só é conhecida depois de resolver o `PrecoServico` (ou o pacote de evento), `criar()` passou a resolver isso **antes** de validar disponibilidade, em vez de validar e só depois descobrir a duração. Efeito colateral positivo: `criarAgendamentoDeAula` agora recebe `PrecoServico` já resolvido em vez de `categoria`+`modalidade` soltos, eliminando uma consulta duplicada que existia entre o `criar()`/`criarInscricaoTurma` e o helper.
+- Continua não havendo checagem de disponibilidade na inscrição em Turma (`criarInscricaoTurma`) - aula em grupo permite múltiplas famílias no mesmo slot por definição; a regra nova só afeta compromissos que ocupam a agenda do professor individualmente (aula avulsa, pacote individual, evento, próxima aula de matrícula).
+- A "agenda do professor" (`AdminAgendaPage.tsx` / `GET /api/agendamentos`) não precisou de nenhuma mudança - ela já lista diretamente os `Agendamento`s do dia; a garantia de "sem conflito entre marcações" agora é estrutural (todo `Agendamento` só é criado depois de passar por esta validação centralizada), não uma view separada.
+- Testes: `AgendamentoServiceTest` ganhou 4 casos cobrindo exatamente os dois exemplos do pedido (30 min e 50 min, checando o minuto bloqueado e o primeiro minuto liberado em cada caso) e 1 caso confirmando que um agendamento CANCELADO não bloqueia o horário.
+
+### Pendência conhecida (nova)
+
+- Criar uma `Turma` não checa se o dia da semana + horário escolhido colide com compromissos já existentes (a checagem só vale para `Agendamento`s reais, criados a cada inscrição/aula) - checar isso exigiria projetar conflito contra uma série recorrente indefinida (todas as terças futuras, por exemplo), o que é uma extensão bem maior da regra atual. Fora de escopo por ora.
+
+### Verificação
+
+Suíte completa de testes backend (`mvn test`, 91 testes) passando.

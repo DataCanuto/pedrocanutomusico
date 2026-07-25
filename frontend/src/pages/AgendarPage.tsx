@@ -207,13 +207,10 @@ export function AgendarPage() {
     const ehGrupo = ehGrupoDeAula(categoria, modalidade);
 
     const mutation = useMutation({
-        mutationFn: async (v: AgendamentoFormValues): Promise<AgendamentoCriadoResponse> => {
-            if (ehGrupoDeAula(v.categoria, v.modalidade)) {
-                const agendamento = await inscreverEmTurma(v.codigoTurma.trim(), paraInscricaoTurmaRequest(v));
-                return { matriculaId: agendamento.matriculaId, agendamentos: [agendamento] };
-            }
-            return criarAgendamento(paraAgendamentoRequest(v));
-        },
+        mutationFn: (v: AgendamentoFormValues): Promise<AgendamentoCriadoResponse> =>
+            ehGrupoDeAula(v.categoria, v.modalidade)
+                ? inscreverEmTurma(v.codigoTurma.trim(), paraInscricaoTurmaRequest(v))
+                : criarAgendamento(paraAgendamentoRequest(v)),
     });
 
     if (mutation.isSuccess) {

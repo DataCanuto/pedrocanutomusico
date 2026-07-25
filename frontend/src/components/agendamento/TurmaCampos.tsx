@@ -3,15 +3,18 @@ import { useFormContext } from "react-hook-form";
 import { extrairMensagemErro } from "../../services/api";
 import { buscarTurmaPorCodigo } from "../../services/turmaService";
 import { montarLinkWhatsApp } from "../../services/whatsapp";
-import { INSTRUMENTO_LABELS } from "../../types/labels";
+import { DIA_SEMANA_LABELS, INSTRUMENTO_LABELS, QUANTIDADE_AULAS } from "../../types/labels";
+import { gerarPreviewDeDatas } from "../../utils/recorrencia";
 import type { AgendamentoFormValues } from "./formTypes";
+import type { ETipoContratacao } from "../../types/domain";
 
 /**
  * Aula em grupo não tem data/hora livre - acontece dentro de uma Turma já marcada pelo
- * professor (ver TurmaService no backend). Em vez de uma página separada, a matrícula na turma
- * acontece no mesmo formulário de agendamento: o campo abaixo busca a turma pelo código e, se
- * encontrada, mostra data/hora/local para conferência; se a cliente não tiver o código, o botão
- * de WhatsApp chama o professor.
+ * professor (ver TurmaService no backend), com um dia da semana + horário recorrentes. Em vez de
+ * uma página separada, a matrícula na turma acontece no mesmo formulário de agendamento: o campo
+ * abaixo busca a turma pelo código e, se encontrada, mostra dia/hora/local para conferência e um
+ * preview das datas que serão geradas para o pacote já escolhido em ServicoFields; se a cliente
+ * não tiver o código, o botão de WhatsApp chama o professor.
  */
 export function TurmaCampos() {
     const {
@@ -21,6 +24,7 @@ export function TurmaCampos() {
     } = useFormContext<AgendamentoFormValues>();
 
     const codigoTurma = watch("codigoTurma");
+    const tipoContratacao = watch("tipoContratacao");
     const codigoParecCompleto = codigoTurma.trim().length >= 6;
 
     const turmaQuery = useQuery({
@@ -29,6 +33,12 @@ export function TurmaCampos() {
         enabled: codigoParecCompleto,
         retry: false,
     });
+
+    const quantidadeAulas = tipoContratacao ? QUANTIDADE_AULAS[tipoContratacao as ETipoContratacao] : 0;
+    const preview =
+        turmaQuery.isSuccess && quantidadeAulas > 0
+            ? gerarPreviewDeDatas([{ diaSemana: turmaQuery.data.diaSemana, hora: turmaQuery.data.hora }], quantidadeAulas, new Date())
+            : [];
 
     return (
         <div className="form-section">
@@ -45,9 +55,25 @@ export function TurmaCampos() {
 
             {turmaQuery.isSuccess && (
                 <div className="detalhe-pacote">
-                    <p>Data: {turmaQuery.data.data} às {turmaQuery.data.hora}</p>
+                    <p>
+                        Toda {DIA_SEMANA_LABELS[turmaQuery.data.diaSemana]} às {turmaQuery.data.hora}
+                    </p>
                     <p>Local: {turmaQuery.data.local}</p>
                     {turmaQuery.data.instrumento && <p>Instrumento: {INSTRUMENTO_LABELS[turmaQuery.data.instrumento]}</p>}
+
+                    {preview.length > 0 && (
+                        <>
+                            <p>Datas previstas para o pacote escolhido:</p>
+                            <ul>
+                                {preview.map((slot, i) => (
+                                    <li key={i}>
+                                        {slot.data.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" })} às{" "}
+                                        {slot.hora}
+                                    </li>
+                                ))}
+                            </ul>
+                        </>
+                    )}
                 </div>
             )}
 

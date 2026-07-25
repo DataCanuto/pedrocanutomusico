@@ -12,10 +12,12 @@ import com.pedrocanuto.agendamento.domain.Aluno;
 import com.pedrocanuto.agendamento.domain.Cliente;
 import com.pedrocanuto.agendamento.domain.Matricula;
 import com.pedrocanuto.agendamento.domain.PrecoServico;
+import com.pedrocanuto.agendamento.domain.Turma;
 import com.pedrocanuto.agendamento.domain.enums.ECategoriaServico;
 import com.pedrocanuto.agendamento.domain.enums.EModalidadeServico;
 import com.pedrocanuto.agendamento.domain.enums.EStatusAgendamento;
 import com.pedrocanuto.agendamento.domain.enums.EStatusMatricula;
+import com.pedrocanuto.agendamento.domain.enums.EStatusTurma;
 import com.pedrocanuto.agendamento.domain.enums.ETipoContratacao;
 import com.pedrocanuto.agendamento.domain.enums.ETipoEvento;
 import com.pedrocanuto.agendamento.dto.request.AgendamentoRequestDTO;
@@ -26,6 +28,7 @@ import com.pedrocanuto.agendamento.dto.request.AnamneseMusicoterapiaRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.ClienteRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.EnderecoRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.HorarioRecorrenteRequestDTO;
+import com.pedrocanuto.agendamento.dto.response.AgendamentoCriadoResponseDTO;
 import com.pedrocanuto.agendamento.exception.RegraDeNegocioException;
 import com.pedrocanuto.agendamento.mapper.AgendamentoMapper;
 import com.pedrocanuto.agendamento.repository.AgendamentoRepository;
@@ -86,7 +89,7 @@ class AgendamentoServiceTest {
                 ECategoriaServico.MUSICALIZACAO_INFANTIL, EModalidadeServico.INDIVIDUAL, ETipoContratacao.AVULSO))
                 .thenReturn(preco);
         when(matriculaService.criar(any(), any(), any(), any(), any())).thenReturn(matricula);
-        when(agendamentoRepository.existsByDataAndHoraAndStatusNot(any(), any(), any())).thenReturn(false);
+        when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of());
         when(agendamentoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         agendamentoService.criar(aulaRequestDTO(ECategoriaServico.MUSICALIZACAO_INFANTIL, ETipoContratacao.AVULSO));
@@ -114,7 +117,7 @@ class AgendamentoServiceTest {
                 ECategoriaServico.MUSICOTERAPIA, EModalidadeServico.INDIVIDUAL, ETipoContratacao.AVULSO))
                 .thenReturn(preco);
         when(matriculaService.criar(any(), any(), any(), any(), any())).thenReturn(matricula);
-        when(agendamentoRepository.existsByDataAndHoraAndStatusNot(any(), any(), any())).thenReturn(false);
+        when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of());
         when(agendamentoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         AnamneseMusicoterapiaRequestDTO anamnese = anamneseDTO();
@@ -138,7 +141,7 @@ class AgendamentoServiceTest {
                 ECategoriaServico.MUSICOTERAPIA, EModalidadeServico.INDIVIDUAL, ETipoContratacao.AVULSO))
                 .thenReturn(preco);
         when(matriculaService.criar(any(), any(), any(), any(), any())).thenReturn(matricula);
-        when(agendamentoRepository.existsByDataAndHoraAndStatusNot(any(), any(), any())).thenReturn(false);
+        when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of());
         when(agendamentoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         agendamentoService.criar(musicoterapiaRequestDTO(null));
@@ -161,7 +164,7 @@ class AgendamentoServiceTest {
         when(alunoService.buscarOuCriarParaResponsavel(any(), any())).thenReturn(aluno);
         when(precoServicoService.buscarPorCategoriaModalidadeEPacote(any(), any(), any())).thenReturn(preco);
         when(matriculaService.criar(any(), any(), any(), any(), any())).thenReturn(matricula);
-        when(agendamentoRepository.existsByDataAndHoraAndStatusNot(any(), any(), any())).thenReturn(false);
+        when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of());
         when(agendamentoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         List<HorarioRecorrenteRequestDTO> recorrencias = List.of(
@@ -177,14 +180,132 @@ class AgendamentoServiceTest {
     }
 
     @Test
-    void criarComHorarioJaOcupadoLancaExcecaoENaoSalva() {
-        when(agendamentoRepository.existsByDataAndHoraAndStatusNot(any(), any(), any())).thenReturn(true);
+    void criarInscricaoTurmaGeraUmAgendamentoPorAulaDoPacoteNoDiaEHoraDaTurma() {
+        Cliente cliente = new Cliente();
+        Aluno aluno = new Aluno();
+        aluno.setDataNascimento(LocalDate.now().minusYears(8));
+        PrecoServico preco = precoMusicalizacaoIndividualAvulso();
+        Matricula matricula = matriculaDe(preco, ETipoContratacao.PACOTE_4);
+        matricula.setValorTotal(new BigDecimal("560.00"));
 
-        assertThatThrownBy(() -> agendamentoService.criar(aulaRequestDTO(ECategoriaServico.MUSICALIZACAO_INFANTIL, ETipoContratacao.AVULSO)))
-                .isInstanceOf(RegraDeNegocioException.class);
+        when(alunoService.buscarOuCriarParaResponsavel(any(), any())).thenReturn(aluno);
+        when(precoServicoService.buscarPorCategoriaModalidadeEPacote(any(), any(), any())).thenReturn(preco);
+        when(matriculaService.criar(any(), any(), any(), any(), any())).thenReturn(matricula);
+        when(agendamentoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Turma turma = new Turma();
+        turma.setStatus(EStatusTurma.ATIVA);
+        turma.setCategoria(ECategoriaServico.MUSICALIZACAO_INFANTIL);
+        turma.setDiaSemana(DayOfWeek.TUESDAY);
+        turma.setHora(LocalTime.of(15, 0));
+        turma.setLocal("Estúdio Pedro Canuto");
+
+        AlunoSelecaoRequestDTO alunoSelecao = new AlunoSelecaoRequestDTO(false,
+                new AlunoRequestDTO("Sofia Souza", LocalDate.now().minusYears(8), null, null));
+
+        AgendamentoCriadoResponseDTO resposta =
+                agendamentoService.criarInscricaoTurma(cliente, alunoSelecao, turma, ETipoContratacao.PACOTE_4, "obs");
+
+        ArgumentCaptor<Agendamento> captor = ArgumentCaptor.forClass(Agendamento.class);
+        verify(agendamentoRepository, org.mockito.Mockito.times(4)).save(captor.capture());
+        assertThat(captor.getAllValues()).allMatch(a -> a.getTurma() == turma);
+        assertThat(captor.getAllValues()).allMatch(a -> a.getHora().equals(LocalTime.of(15, 0)));
+        assertThat(captor.getAllValues()).allSatisfy(a -> assertThat(a.getData().getDayOfWeek()).isEqualTo(DayOfWeek.TUESDAY));
+        assertThat(resposta.agendamentos()).hasSize(4);
+        // não checa disponibilidade - turma é aula em grupo, vários alunos podem ocupar o mesmo slot.
+        verify(agendamentoRepository, never()).findByDataAndStatusNot(any(), any());
+    }
+
+    /**
+     * Regra de negócio fundamental: um compromisso de duração D às H bloqueia até H+D+30min: aula
+     * de 30min às 15h bloqueia 15h-15:59 (16h livre); aula de 50min às 15h bloqueia 15h-16:29
+     * (16:30 livre). Os 4 testes abaixo cobrem exatamente esses dois exemplos, nos dois lados do
+     * limite (bloqueado vs. liberado).
+     */
+    @Test
+    void criarBloqueiaHorarioDentroDaJanelaDeAulaDeTrintaMinutosMaisIntervalo() {
+        when(precoServicoService.buscarPorCategoriaModalidadeEPacote(any(), any(), any())).thenReturn(precoMusicalizacaoIndividualAvulso());
+        when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of(agendamentoExistente(LocalTime.of(15, 0), 30)));
+
+        assertThatThrownBy(() -> agendamentoService.criar(aulaRequestDTOComHorario(LocalTime.of(15, 45))))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("intervalo");
 
         verify(agendamentoRepository, never()).save(any());
         verify(clienteService, never()).buscarOuCriar(any());
+    }
+
+    @Test
+    void criarPermiteHorarioExatamenteTrintaMinutosAposAulaDeTrintaMinutos() {
+        stubsParaCriarAulaComSucesso();
+        when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of(agendamentoExistente(LocalTime.of(15, 0), 30)));
+
+        agendamentoService.criar(aulaRequestDTOComHorario(LocalTime.of(16, 0)));
+
+        verify(agendamentoRepository).save(any());
+    }
+
+    @Test
+    void criarBloqueiaHorarioDentroDaJanelaDeAulaDeCinquentaMinutosMaisIntervalo() {
+        when(precoServicoService.buscarPorCategoriaModalidadeEPacote(any(), any(), any())).thenReturn(precoMusicalizacaoIndividualAvulso());
+        when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of(agendamentoExistente(LocalTime.of(15, 0), 50)));
+
+        assertThatThrownBy(() -> agendamentoService.criar(aulaRequestDTOComHorario(LocalTime.of(16, 15))))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("intervalo");
+
+        verify(agendamentoRepository, never()).save(any());
+    }
+
+    @Test
+    void criarPermiteHorarioExatamenteTrintaMinutosAposAulaDeCinquentaMinutos() {
+        stubsParaCriarAulaComSucesso();
+        when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of(agendamentoExistente(LocalTime.of(15, 0), 50)));
+
+        agendamentoService.criar(aulaRequestDTOComHorario(LocalTime.of(16, 30)));
+
+        verify(agendamentoRepository).save(any());
+    }
+
+    @Test
+    void criarIgnoraAgendamentoCanceladoAoChecarDisponibilidade() {
+        stubsParaCriarAulaComSucesso();
+        // findByDataAndStatusNot já exclui CANCELADO na própria query - simula o repositório não
+        // devolvendo nada em conflito, mesmo que exista um cancelado no mesmo horário.
+        when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of());
+
+        agendamentoService.criar(aulaRequestDTOComHorario(LocalTime.of(15, 0)));
+
+        verify(agendamentoRepository).save(any());
+    }
+
+    private void stubsParaCriarAulaComSucesso() {
+        Cliente cliente = new Cliente();
+        Aluno aluno = new Aluno();
+        aluno.setDataNascimento(LocalDate.now().minusYears(8));
+        PrecoServico preco = precoMusicalizacaoIndividualAvulso();
+        Matricula matricula = matriculaDe(preco, ETipoContratacao.AVULSO);
+
+        when(clienteService.buscarOuCriar(any())).thenReturn(cliente);
+        when(alunoService.buscarOuCriarParaResponsavel(any(), any())).thenReturn(aluno);
+        when(precoServicoService.buscarPorCategoriaModalidadeEPacote(any(), any(), any())).thenReturn(preco);
+        when(matriculaService.criar(any(), any(), any(), any(), any())).thenReturn(matricula);
+        when(agendamentoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    }
+
+    private Agendamento agendamentoExistente(LocalTime hora, int duracaoMinutos) {
+        Agendamento agendamento = new Agendamento();
+        agendamento.setHora(hora);
+        agendamento.setDuracaoMinutos(duracaoMinutos);
+        return agendamento;
+    }
+
+    private AgendamentoRequestDTO aulaRequestDTOComHorario(LocalTime hora) {
+        AlunoSelecaoRequestDTO aluno = new AlunoSelecaoRequestDTO(false,
+                new AlunoRequestDTO("Sofia Souza", LocalDate.now().minusYears(3), null, null));
+        return new AgendamentoRequestDTO(clienteDTO(), aluno, ECategoriaServico.MUSICALIZACAO_INFANTIL, EModalidadeServico.INDIVIDUAL,
+                ETipoContratacao.AVULSO, null, null, null, null, null, null, null,
+                LocalDate.now().plusDays(3), hora, null, null);
     }
 
     @Test
@@ -205,7 +326,7 @@ class AgendamentoServiceTest {
     void criarEventoComPacoteDePrecoFixoJaCobraNaCriacao() {
         Cliente cliente = new Cliente();
         when(clienteService.buscarOuCriar(any())).thenReturn(cliente);
-        when(agendamentoRepository.existsByDataAndHoraAndStatusNot(any(), any(), any())).thenReturn(false);
+        when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of());
         when(agendamentoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         PrecoServico pacote = pacoteDeEvento("Roda de Música com Banda das Crianças", new BigDecimal("600.00"), 60);
@@ -225,7 +346,7 @@ class AgendamentoServiceTest {
     void criarEventoComPacoteSobConsultaDeixaValorCobradoNulo() {
         Cliente cliente = new Cliente();
         when(clienteService.buscarOuCriar(any())).thenReturn(cliente);
-        when(agendamentoRepository.existsByDataAndHoraAndStatusNot(any(), any(), any())).thenReturn(false);
+        when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of());
         when(agendamentoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         PrecoServico pacoteSobConsulta = pacoteDeEvento("Festa Temática", null, null);
@@ -241,10 +362,6 @@ class AgendamentoServiceTest {
 
     @Test
     void criarEventoComPacoteSobConsultaSemDuracaoInformadaLancaExcecao() {
-        Cliente cliente = new Cliente();
-        when(clienteService.buscarOuCriar(any())).thenReturn(cliente);
-        when(agendamentoRepository.existsByDataAndHoraAndStatusNot(any(), any(), any())).thenReturn(false);
-
         PrecoServico pacoteSobConsulta = pacoteDeEvento("Festa Temática", null, null);
         when(precoServicoService.buscarPacoteDeEvento(2L)).thenReturn(pacoteSobConsulta);
 

@@ -1,13 +1,14 @@
 import { api } from "./api";
-import type { AgendamentoResponse, InscricaoTurmaRequest, Turma, TurmaRequest } from "../types/domain";
+import type { AgendamentoCriadoResponse, InscricaoTurmaRequest, Turma, TurmaRequest } from "../types/domain";
 
 export async function buscarTurmaPorCodigo(codigo: string): Promise<Turma> {
     const { data } = await api.get<Turma>(`/turmas/${codigo}`);
     return data;
 }
 
-export async function inscreverEmTurma(codigo: string, dto: InscricaoTurmaRequest): Promise<AgendamentoResponse> {
-    const { data } = await api.post<AgendamentoResponse>(`/turmas/${codigo}/inscricoes`, dto);
+/** Gera uma aula por semana no pacote escolhido - mesmo contrato de resposta de POST /agendamentos (lista de aulas). */
+export async function inscreverEmTurma(codigo: string, dto: InscricaoTurmaRequest): Promise<AgendamentoCriadoResponse> {
+    const { data } = await api.post<AgendamentoCriadoResponse>(`/turmas/${codigo}/inscricoes`, dto);
     return data;
 }
 

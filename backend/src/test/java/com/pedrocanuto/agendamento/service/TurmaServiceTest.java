@@ -4,16 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.pedrocanuto.agendamento.domain.Agendamento;
 import com.pedrocanuto.agendamento.domain.Cliente;
 import com.pedrocanuto.agendamento.domain.Turma;
 import com.pedrocanuto.agendamento.domain.enums.ECategoriaServico;
 import com.pedrocanuto.agendamento.domain.enums.EInstrumento;
-import com.pedrocanuto.agendamento.domain.enums.EModalidadeServico;
 import com.pedrocanuto.agendamento.domain.enums.EStatusTurma;
 import com.pedrocanuto.agendamento.domain.enums.ETipoContratacao;
 import com.pedrocanuto.agendamento.dto.request.AlunoRequestDTO;
@@ -22,11 +19,12 @@ import com.pedrocanuto.agendamento.dto.request.ClienteRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.EnderecoRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.InscricaoTurmaRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.TurmaRequestDTO;
+import com.pedrocanuto.agendamento.dto.response.AgendamentoCriadoResponseDTO;
 import com.pedrocanuto.agendamento.exception.RegraDeNegocioException;
-import com.pedrocanuto.agendamento.mapper.AgendamentoMapper;
 import com.pedrocanuto.agendamento.mapper.TurmaMapper;
 import com.pedrocanuto.agendamento.repository.TurmaRepository;
 import com.pedrocanuto.agendamento.service.validation.AgendamentoValidator;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -49,20 +47,18 @@ class TurmaServiceTest {
     private ClienteService clienteService;
     @Mock
     private AgendamentoService agendamentoService;
-    @Mock
-    private AgendamentoMapper agendamentoMapper;
 
     private TurmaService turmaService;
 
     @BeforeEach
     void setUp() {
         turmaService = new TurmaService(turmaRepository, turmaMapper, clienteService, agendamentoService,
-                new AgendamentoValidator(), agendamentoMapper);
+                new AgendamentoValidator());
     }
 
     @Test
     void criarRejeitaCategoriaEvento() {
-        TurmaRequestDTO dto = new TurmaRequestDTO(ECategoriaServico.EVENTO, null, LocalDate.now().plusDays(5), LocalTime.of(10, 0), enderecoDTO());
+        TurmaRequestDTO dto = new TurmaRequestDTO(ECategoriaServico.EVENTO, null, DayOfWeek.TUESDAY, LocalTime.of(10, 0), enderecoDTO());
 
         assertThatThrownBy(() -> turmaService.criar(dto))
                 .isInstanceOf(RegraDeNegocioException.class)
@@ -75,7 +71,7 @@ class TurmaServiceTest {
         when(turmaMapper.toEntity(any())).thenReturn(new Turma());
         when(turmaRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        TurmaRequestDTO dto = new TurmaRequestDTO(ECategoriaServico.MUSICALIZACAO_INFANTIL, null, LocalDate.now().plusDays(5), LocalTime.of(10, 0), enderecoDTO());
+        TurmaRequestDTO dto = new TurmaRequestDTO(ECategoriaServico.MUSICALIZACAO_INFANTIL, null, DayOfWeek.TUESDAY, LocalTime.of(10, 0), enderecoDTO());
         turmaService.criar(dto);
 
         ArgumentCaptor<Turma> captor = ArgumentCaptor.forClass(Turma.class);
@@ -85,7 +81,7 @@ class TurmaServiceTest {
 
     @Test
     void criarExigeInstrumentoParaCategoriaAulaInstrumento() {
-        TurmaRequestDTO dto = new TurmaRequestDTO(ECategoriaServico.AULA_INSTRUMENTO, null, LocalDate.now().plusDays(5), LocalTime.of(10, 0), enderecoDTO());
+        TurmaRequestDTO dto = new TurmaRequestDTO(ECategoriaServico.AULA_INSTRUMENTO, null, DayOfWeek.TUESDAY, LocalTime.of(10, 0), enderecoDTO());
 
         assertThatThrownBy(() -> turmaService.criar(dto))
                 .isInstanceOf(RegraDeNegocioException.class)
@@ -95,7 +91,7 @@ class TurmaServiceTest {
     @Test
     void criarRejeitaInstrumentoForaDeAulaInstrumento() {
         TurmaRequestDTO dto = new TurmaRequestDTO(ECategoriaServico.MUSICALIZACAO_INFANTIL, EInstrumento.VIOLAO,
-                LocalDate.now().plusDays(5), LocalTime.of(10, 0), enderecoDTO());
+                DayOfWeek.TUESDAY, LocalTime.of(10, 0), enderecoDTO());
 
         assertThatThrownBy(() -> turmaService.criar(dto))
                 .isInstanceOf(RegraDeNegocioException.class)
@@ -116,26 +112,25 @@ class TurmaServiceTest {
     }
 
     @Test
-    void inscreverUsaDataHoraLocalECategoriaDaTurmaComModalidadeGrupo() {
+    void inscreverDelegaParaAgendamentoServiceComDadosDaTurma() {
         Turma turma = new Turma();
         turma.setStatus(EStatusTurma.ATIVA);
         turma.setCategoria(ECategoriaServico.MUSICALIZACAO_INFANTIL);
-        turma.setData(LocalDate.now().plusDays(10));
+        turma.setDiaSemana(DayOfWeek.TUESDAY);
         turma.setHora(LocalTime.of(15, 0));
         turma.setLocal("Estúdio Pedro Canuto");
         when(turmaRepository.findByCodigo("XYZ999")).thenReturn(Optional.of(turma));
 
         Cliente cliente = new Cliente();
         when(clienteService.buscarOuCriar(any())).thenReturn(cliente);
-        when(agendamentoService.criarAgendamentoDeAula(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(new Agendamento());
+        AgendamentoCriadoResponseDTO resposta = new AgendamentoCriadoResponseDTO(1L, List.of());
+        when(agendamentoService.criarInscricaoTurma(any(), any(), any(), any(), any())).thenReturn(resposta);
 
-        turmaService.inscrever("xyz999", inscricaoDTO());
+        InscricaoTurmaRequestDTO dto = inscricaoDTO();
+        assertThat(turmaService.inscrever("xyz999", dto)).isSameAs(resposta);
 
-        verify(agendamentoService).criarAgendamentoDeAula(
-                eq(cliente), any(), eq(ECategoriaServico.MUSICALIZACAO_INFANTIL), eq(EModalidadeServico.GRUPO),
-                eq(ETipoContratacao.PACOTE_4), isNull(), eq(turma.getData()), eq(turma.getHora()),
-                eq(turma.getLocal()), eq(turma), any());
+        verify(agendamentoService).criarInscricaoTurma(
+                eq(cliente), eq(dto.aluno()), eq(turma), eq(ETipoContratacao.PACOTE_4), eq(dto.observacoes()));
     }
 
     private EnderecoRequestDTO enderecoDTO() {

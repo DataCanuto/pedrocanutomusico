@@ -4,7 +4,6 @@ import com.pedrocanuto.agendamento.domain.Agendamento;
 import com.pedrocanuto.agendamento.domain.enums.ECategoriaServico;
 import com.pedrocanuto.agendamento.domain.enums.EStatusAgendamento;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -27,5 +26,6 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long> 
 
     Optional<Agendamento> findByCodigoPublico(String codigoPublico);
 
-    boolean existsByDataAndHoraAndStatusNot(LocalDate data, LocalTime hora, EStatusAgendamento status);
+    /** Usado para checar conflito de horário (com folga de duração) na agenda do professor - ver AgendamentoService#validarDisponibilidade. */
+    List<Agendamento> findByDataAndStatusNot(LocalDate data, EStatusAgendamento status);
 }

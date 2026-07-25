@@ -11,7 +11,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDate;
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import lombok.Getter;
@@ -19,13 +19,16 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Um horário de aula em grupo criado pelo professor, com um {@link #codigo} curto que as
- * famílias usam para matricular seus alunos. A Turma só fixa categoria/modalidade=GRUPO/data/
- * hora/local - cada família escolhe seu próprio tamanho de pacote (avulso/2/3/4) ao entrar,
- * e recebe sua própria {@link Matricula}/{@link Agendamento} (preço de grupo é por aluno, não
- * uma taxa única da turma - ver prices.txt). {@link #codigo} é curto e alfanumérico (pensado
- * para ser falado/digitado por telefone), diferente do {@code codigoPublico} de Agendamento
- * (um UUID, pensado para link/cópia).
+ * Um horário recorrente de aula em grupo criado pelo professor, com um {@link #codigo} curto
+ * que as famílias usam para matricular seus alunos. A Turma fixa categoria/modalidade=GRUPO/
+ * diaSemana/hora/local - cada família escolhe seu próprio tamanho de pacote (avulso/2/3/4) ao
+ * entrar, e o backend gera automaticamente todas as datas do pacote nesse dia/horário (mesma
+ * regra do agendamento individual recorrente - ver GeradorDeDatasRecorrentes), sempre dentro da
+ * janela de 31 dias corridos a partir de hoje. Cada família recebe sua própria
+ * {@link Matricula}/{@link Agendamento}s (preço de grupo é por aluno, não uma taxa única da
+ * turma - ver prices.txt). {@link #codigo} é curto e alfanumérico (pensado para ser falado/
+ * digitado por telefone), diferente do {@code codigoPublico} de Agendamento (um UUID, pensado
+ * para link/cópia).
  */
 @Entity
 @Table(name = "turma")
@@ -50,8 +53,9 @@ public class Turma {
     @Column(length = 20)
     private EInstrumento instrumento;
 
-    @Column(nullable = false)
-    private LocalDate data;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private DayOfWeek diaSemana;
 
     @Column(nullable = false)
     private LocalTime hora;
