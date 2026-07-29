@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://pedrocanutomusico.vercel.app/sitemap.xml
