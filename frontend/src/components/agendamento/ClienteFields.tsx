@@ -1,14 +1,42 @@
+import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 import type { AgendamentoFormValues } from "./formTypes";
+import { buscarEnderecoPorCep } from "../../services/cepService";
 
 export function ClienteFields() {
     const {
         register,
         watch,
+        setValue,
         formState: { errors },
     } = useFormContext<AgendamentoFormValues>();
 
     const paraMim = watch("paraMim");
+    const [buscandoCep, setBuscandoCep] = useState(false);
+    const [erroCep, setErroCep] = useState<string | null>(null);
+
+    async function preencherEnderecoPeloCep(cep: string) {
+        if (cep.replace(/\D/g, "").length !== 8) {
+            return;
+        }
+        setErroCep(null);
+        setBuscandoCep(true);
+        try {
+            const endereco = await buscarEnderecoPorCep(cep);
+            if (!endereco) {
+                setErroCep("CEP não encontrado.");
+                return;
+            }
+            setValue("clienteEnderecoRua", endereco.rua, { shouldValidate: true });
+            setValue("clienteEnderecoBairro", endereco.bairro, { shouldValidate: true });
+            setValue("clienteEnderecoCidade", endereco.cidade, { shouldValidate: true });
+            setValue("clienteEnderecoEstado", endereco.estado, { shouldValidate: true });
+        } catch {
+            setErroCep("Não foi possível buscar o CEP agora. Preencha o endereço manualmente.");
+        } finally {
+            setBuscandoCep(false);
+        }
+    }
 
     return (
         <fieldset className="form-section">
@@ -46,8 +74,13 @@ export function ClienteFields() {
             <input
                 id="clienteEnderecoCep"
                 placeholder="00000-000"
-                {...register("clienteEnderecoCep", { required: "Informe o CEP" })}
+                {...register("clienteEnderecoCep", {
+                    required: "Informe o CEP",
+                    onBlur: (e) => preencherEnderecoPeloCep(e.target.value),
+                })}
             />
+            {buscandoCep && <small>Buscando endereço...</small>}
+            {erroCep && <span className="erro-campo">{erroCep}</span>}
             {errors.clienteEnderecoCep && <span className="erro-campo">{errors.clienteEnderecoCep.message}</span>}
 
             <label htmlFor="clienteEnderecoRua">Rua</label>
