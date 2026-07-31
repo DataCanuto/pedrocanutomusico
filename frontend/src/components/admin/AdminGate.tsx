@@ -6,9 +6,8 @@ import { extrairMensagemErro } from "../../services/api";
 import { verificarAdminKey } from "../../services/adminAuthService";
 
 /**
- * Pede a chave de admin uma vez e, depois de autenticado, desenha o cabeçalho padrão (título +
- * botão "Trocar chave") de forma consistente em toda página admin - antes cada página repetia
- * esse mesmo cabeçalho, dando a impressão de que "Trocar chave" era uma ação local da página.
+ * Pede a chave de admin uma vez e, depois de autenticado, desenha o título padrão de forma
+ * consistente em toda página admin.
  *
  * A chave é validada contra o backend (GET /admin/auth/verificar) antes de liberar acesso.
  * Sem isso, uma chave errada ou desatualizada em sessionStorage deixava o professor "entrar" e
@@ -78,10 +77,7 @@ export function AdminGate({
     return (
         <div className="pagina-admin">
             <BotaoVoltar destino={destinoVoltar} />
-            <div className="admin-header">
-                <h1>{titulo}</h1>
-                <button onClick={() => setAdminKey("")}>Trocar chave</button>
-            </div>
+            <h1>{titulo}</h1>
             {children(adminKey)}
         </div>
     );

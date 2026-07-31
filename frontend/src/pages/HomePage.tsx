@@ -17,7 +17,7 @@ export function HomePage() {
             <section className="hero" id="topo">
                 <div className="caixa-texto hero-caixa">
                     <div className="hero-conteudo">
-                        <p className="hero-eyebrow">Aulas de música e musicoterapia em Salvador, para todas as idades</p>
+                        <h3 className="hero-eyebrow">Aulas de música e musicoterapia em Salvador, para todas as idades</h3>
                         <h1>Música que educa, acolhe e transforma.</h1>
                         <p className="hero-lead">
                             Sou <strong>Pedro Canuto</strong>, músico, educador musical e musicoterapeuta. Há quase uma década crio experiências

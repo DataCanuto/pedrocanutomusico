@@ -105,7 +105,7 @@
 }
 
 .pagina-home h3 {
-  font-size: 20px;
+  font-size: 14px;
   margin: 20px 0 8px;
 }
 
@@ -453,12 +453,6 @@
 }
 
 /* Admin */
-.admin-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
 .admin-hub {
   display: grid;
   gap: 12px;
@@ -478,8 +472,25 @@
 }
 
 .admin-hub-card strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: var(--text-h);
   font-size: 16px;
+}
+
+.admin-hub-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--erro);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .admin-hub-card span {
