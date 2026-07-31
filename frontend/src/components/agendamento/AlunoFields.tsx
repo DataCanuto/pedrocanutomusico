@@ -1,14 +1,31 @@
 import { useFormContext } from "react-hook-form";
 import type { AgendamentoFormValues } from "./formTypes";
 
+interface AlunoFieldsProps {
+    /** Texto do fieldset - default cobre o fluxo de aula; EVENTO+ANIVERSARIO passa textos de aniversariante. */
+    legend?: string;
+    perguntaLabel?: string;
+    nomeLabel?: string;
+    /** Dica exibida abaixo da data de nascimento - passe null para omitir (não se aplica a EVENTO). */
+    dica?: string | null;
+}
+
 /**
  * paraMim=true: quem participa é o próprio cliente, então nome/data de nascimento não são
  * pedidos de novo aqui - o formulário reaproveita clienteNome/clienteDataNascimento (ver
  * ClienteFields) no submit (AgendarPage.paraAgendamentoRequest). O backend continua exigindo
- * dadosAluno.nome/dataNascimento (a duração da aula depende da idade de quem participa) - só
- * deixamos de pedir a mesma informação duas vezes na tela.
+ * dadosAluno.nome/dataNascimento mesmo com paraMim=true - só deixamos de pedir a mesma
+ * informação duas vezes na tela.
+ *
+ * Reaproveitado também para o aniversariante em EVENTO+ANIVERSARIO (ver AgendarPage) - mesma
+ * estrutura de campos (paraMim/nome/dataNascimento/observações), só os textos mudam via props.
  */
-export function AlunoFields() {
+export function AlunoFields({
+    legend = "Quem vai participar da aula",
+    perguntaLabel = "É para mim mesmo",
+    nomeLabel = "Nome de quem vai participar",
+    dica = "Usamos a idade para definir a duração da aula.",
+}: AlunoFieldsProps) {
     const {
         register,
         watch,
@@ -20,17 +37,17 @@ export function AlunoFields() {
 
     return (
         <fieldset className="form-section">
-            <legend>Quem vai participar da aula</legend>
+            <legend>{legend}</legend>
 
             <label className="checkbox-label">
                 <input type="checkbox" checked={paraMim} onChange={(e) => setValue("paraMim", e.target.checked)} />
-                É para mim mesmo
+                {perguntaLabel}
             </label>
 
             {!paraMim && (
                 <>
-                    <label htmlFor="alunoNome">Nome de quem vai participar</label>
-                    <input id="alunoNome" {...register("alunoNome", { required: "Informe o nome do aluno" })} />
+                    <label htmlFor="alunoNome">{nomeLabel}</label>
+                    <input id="alunoNome" {...register("alunoNome", { required: "Informe o nome" })} />
                     {errors.alunoNome && <span className="erro-campo">{errors.alunoNome.message}</span>}
 
                     <label htmlFor="alunoDataNascimento">Data de nascimento</label>
@@ -40,7 +57,7 @@ export function AlunoFields() {
                         {...register("alunoDataNascimento", { required: "Informe a data de nascimento" })}
                     />
                     {errors.alunoDataNascimento && <span className="erro-campo">{errors.alunoDataNascimento.message}</span>}
-                    <small>Usamos a idade para definir a duração da aula.</small>
+                    {dica && <small>{dica}</small>}
                 </>
             )}
 

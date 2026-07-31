@@ -2,6 +2,7 @@ package com.pedrocanuto.agendamento.service.validation;
 
 import com.pedrocanuto.agendamento.domain.enums.ECategoriaServico;
 import com.pedrocanuto.agendamento.domain.enums.ETipoContratacao;
+import com.pedrocanuto.agendamento.domain.enums.ETipoEvento;
 import com.pedrocanuto.agendamento.dto.request.AgendamentoRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.HorarioRecorrenteRequestDTO;
 import com.pedrocanuto.agendamento.exception.RegraDeNegocioException;
@@ -62,8 +63,8 @@ public class AgendamentoValidator {
         if (dto.eventoPrecoServicoId() == null) {
             throw new RegraDeNegocioException("Selecione um pacote de evento (eventoPrecoServicoId é obrigatório)");
         }
-        if (dto.aluno() != null) {
-            throw new RegraDeNegocioException("Categoria EVENTO não deve informar aluno");
+        if (dto.aluno() != null && dto.tipoEvento() != ETipoEvento.ANIVERSARIO) {
+            throw new RegraDeNegocioException("Categoria EVENTO só aceita aluno quando tipoEvento é ANIVERSARIO (nome do aniversariante)");
         }
         if (dto.modalidade() != null || dto.tipoContratacao() != null) {
             throw new RegraDeNegocioException("Categoria EVENTO não deve informar modalidade/tipoContratacao (não há pacote de aula para evento)");

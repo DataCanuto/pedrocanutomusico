@@ -83,8 +83,12 @@ public class AgendamentoService {
             validarDisponibilidade(dto.data(), dto.hora(), duracaoMinutos);
 
             Cliente cliente = clienteService.buscarOuCriar(dto.cliente());
+            // Só EVENTO+ANIVERSARIO pode informar aluno (ver AgendamentoValidator) - usado aqui como o
+            // aniversariante, sem Matricula (evento não é recorrente, não tem pacote de aula).
+            Aluno aniversariante = dto.aluno() != null ? alunoService.buscarOuCriarParaResponsavel(cliente, dto.aluno()) : null;
             Agendamento agendamento = new Agendamento();
             agendamento.setCliente(cliente);
+            agendamento.setAluno(aniversariante);
             agendamento.setCategoria(dto.categoria());
             agendamento.setData(dto.data());
             agendamento.setHora(dto.hora());

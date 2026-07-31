@@ -33,7 +33,9 @@ import lombok.Setter;
  * (não é só derivada de precoServico) para não depender de uma associação opcional para saber o
  * tipo do agendamento. {@code aluno} e {@code matricula} são obrigatórios quando
  * {@code categoria.isAulaTipo()} e proibidos (permanecem nulos) quando é EVENTO - EVENTO não é
- * recorrente, então não tem pacote/matrícula. {@code precoServico} é obrigatório em ambos os
+ * recorrente, então não tem pacote/matrícula. A única exceção é {@code aluno} em EVENTO com
+ * {@code tipoEvento == ANIVERSARIO}, onde ele guarda o aniversariante (sem matrícula, já que
+ * segue sem haver pacote de aula). {@code precoServico} é obrigatório em ambos os
  * casos (para EVENTO, referencia o "pacote"/proposta escolhido no catálogo); {@code valorCobrado}
  * é copiado do precoServico na criação, mas fica nulo quando o pacote escolhido é "sob consulta"
  * (sem preço fixo) até o professor definir o orçamento - ver validação em AgendamentoValidator,

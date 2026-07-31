@@ -343,6 +343,35 @@ class AgendamentoServiceTest {
     }
 
     @Test
+    void criarEventoDeAniversarioComAlunoSetaAlunoSemMatricula() {
+        Cliente cliente = new Cliente();
+        when(clienteService.buscarOuCriar(any())).thenReturn(cliente);
+        when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of());
+        when(agendamentoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        PrecoServico pacote = pacoteDeEvento("Festa Infantil", new BigDecimal("800.00"), 120);
+        when(precoServicoService.buscarPacoteDeEvento(3L)).thenReturn(pacote);
+
+        AlunoSelecaoRequestDTO alunoSelecao = new AlunoSelecaoRequestDTO(false,
+                new AlunoRequestDTO("Sofia Souza", LocalDate.now().minusYears(6), null, null));
+        Aluno aniversariante = new Aluno();
+        when(alunoService.buscarOuCriarParaResponsavel(cliente, alunoSelecao)).thenReturn(aniversariante);
+
+        EnderecoRequestDTO endereco = new EnderecoRequestDTO("41700-000", "Av. Oceânica", "500", "Pituba", "Salvador", "BA", null);
+        AgendamentoRequestDTO dto = new AgendamentoRequestDTO(clienteDTO(), alunoSelecao, ECategoriaServico.EVENTO, null, null, null,
+                ETipoEvento.ANIVERSARIO, 3L, endereco, null, List.of(), null,
+                LocalDate.now().plusDays(7), LocalTime.of(16, 0), null, "Festa da Sofia");
+
+        agendamentoService.criar(dto);
+
+        ArgumentCaptor<Agendamento> captor = ArgumentCaptor.forClass(Agendamento.class);
+        verify(agendamentoRepository).save(captor.capture());
+        assertThat(captor.getValue().getAluno()).isSameAs(aniversariante);
+        assertThat(captor.getValue().getMatricula()).isNull();
+        verify(matriculaService, never()).criar(any(), any(), any(), any(), any());
+    }
+
+    @Test
     void criarEventoComPacoteSobConsultaDeixaValorCobradoNulo() {
         Cliente cliente = new Cliente();
         when(clienteService.buscarOuCriar(any())).thenReturn(cliente);

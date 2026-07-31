@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { AcoesContato } from "../../components/admin/AcoesContato";
 import { AdminGate } from "../../components/admin/AdminGate";
 import {
     definirOrcamentoAdmin,
@@ -196,14 +197,17 @@ function ListaDoDia({ dia, acoes }: { dia: AgendamentoResponse[]; acoes: AcoesAg
             {dia.map((agendamento) => {
                 const pendente = acoes.idPendente === agendamento.id;
                 const acoesDisponiveis = ACOES_POR_STATUS[agendamento.status];
+                const nomeExibido = agendamento.alunoNome ?? agendamento.clienteNome;
+                const responsavelDiferente = agendamento.alunoNome != null && agendamento.alunoNome !== agendamento.clienteNome;
                 return (
                     <li key={agendamento.id}>
                         <div>
-                            <strong>{agendamento.hora}</strong> - {CATEGORIA_LABELS[agendamento.categoria]} -{" "}
-                            {agendamento.alunoNome ?? agendamento.clienteNome} ({agendamento.clienteNome}, {agendamento.clienteTelefone}) -{" "}
+                            <strong>{agendamento.hora}</strong> - {CATEGORIA_LABELS[agendamento.categoria]} - {nomeExibido}
+                            {responsavelDiferente && <> (responsável: {agendamento.clienteNome})</>} - {agendamento.clienteTelefone} -{" "}
                             {STATUS_AGENDAMENTO_LABELS[agendamento.status]}
                         </div>
                         <div className="agenda-acoes">
+                            <AcoesContato telefone={agendamento.clienteTelefone} enderecoResumo={agendamento.enderecoResumo} />
                             {acoesDisponiveis.map(({ acao, label }) => (
                                 <button
                                     key={acao}

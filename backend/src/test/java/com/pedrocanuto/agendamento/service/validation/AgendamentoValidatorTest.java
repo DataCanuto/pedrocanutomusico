@@ -102,14 +102,23 @@ class AgendamentoValidatorTest {
     }
 
     @Test
-    void rejeitaEventoComAlunoPreenchido() {
+    void rejeitaEventoComAlunoPreenchidoForaDeAniversario() {
         AgendamentoRequestDTO dto = new AgendamentoRequestDTO(
                 clienteDTO(), alunoSelecao(), ECategoriaServico.EVENTO, null, null, null,
-                ETipoEvento.ANIVERSARIO, 1L, enderecoEvento(), null, null, null,
+                ETipoEvento.CASAMENTO, 1L, enderecoEvento(), null, null, null,
                 LocalDate.now().plusDays(5), LocalTime.of(15, 0), null, null);
         assertThatThrownBy(() -> validator.validarCamposPorCategoria(dto))
                 .isInstanceOf(RegraDeNegocioException.class)
                 .hasMessageContaining("aluno");
+    }
+
+    @Test
+    void aceitaEventoDeAniversarioComAluno() {
+        AgendamentoRequestDTO dto = new AgendamentoRequestDTO(
+                clienteDTO(), alunoSelecao(), ECategoriaServico.EVENTO, null, null, null,
+                ETipoEvento.ANIVERSARIO, 1L, enderecoEvento(), null, null, null,
+                LocalDate.now().plusDays(5), LocalTime.of(15, 0), null, null);
+        assertThatCode(() -> validator.validarCamposPorCategoria(dto)).doesNotThrowAnyException();
     }
 
     @Test

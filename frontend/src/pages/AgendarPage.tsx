@@ -137,17 +137,19 @@ function anamneseDoFormulario(v: AgendamentoFormValues): AnamneseMusicoterapiaRe
 function paraAgendamentoRequest(v: AgendamentoFormValues): AgendamentoRequest {
     const ehAula = categoriaEhDeAula(v.categoria);
     const ehEvento = v.categoria === "EVENTO";
+    const ehAniversario = ehEvento && v.tipoEvento === "ANIVERSARIO";
     const ehMusicoterapia = v.categoria === "MUSICOTERAPIA";
     const ehPacote = ehPacoteRecorrente(v.categoria, v.tipoContratacao);
 
     return {
         cliente: clienteDoFormulario(v),
-        aluno: ehAula
-            ? {
-                  paraMim: v.paraMim,
-                  dadosAluno: dadosAlunoDoFormulario(v),
-              }
-            : null,
+        aluno:
+            ehAula || ehAniversario
+                ? {
+                      paraMim: v.paraMim,
+                      dadosAluno: dadosAlunoDoFormulario(v),
+                  }
+                : null,
         categoria: v.categoria as ECategoriaServico,
         modalidade: ehAula ? (v.modalidade as EModalidadeServico) : null,
         tipoContratacao: ehAula ? (v.tipoContratacao as ETipoContratacao) : null,
@@ -205,6 +207,7 @@ export function AgendarPage() {
     const { watch } = form;
     const categoria = watch("categoria");
     const modalidade = watch("modalidade");
+    const tipoEvento = watch("tipoEvento");
     const ehGrupo = ehGrupoDeAula(categoria, modalidade);
 
     const mutation = useMutation({
@@ -256,6 +259,14 @@ export function AgendarPage() {
                 <form onSubmit={form.handleSubmit((v) => mutation.mutate(v))}>
                     <ServicoFields precos={precosQuery.data ?? []} />
                     {categoriaEhDeAula(categoria) && <AlunoFields />}
+                    {categoria === "EVENTO" && tipoEvento === "ANIVERSARIO" && (
+                        <AlunoFields
+                            legend="Aniversariante"
+                            perguntaLabel="A festa é para você"
+                            nomeLabel="Nome do aniversariante"
+                            dica={null}
+                        />
+                    )}
                     <ClienteFields />
                     {categoria === "MUSICOTERAPIA" && <AnamneseFields />}
                     {!ehGrupo && <HorarioFields />}
