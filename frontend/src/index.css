@@ -3,7 +3,7 @@ body::before {
     position: fixed;
     inset: 0;
 
-    background-image: url(".\assets\images\logos\arvoreInstrumentos.png");
+    background-image: url("./assets/images/logos/arvoreInstrumentos.png");
     background-repeat: no-repeat;
     background-position: center;
     background-size: 70%;
@@ -17,18 +17,17 @@ body::before {
 :root {
   --text: #000000;
   --text-h: #000000;
-  --bg: #e3d1a5;
+  --bg: #cfbb81;
   --bg-muted: #ca633a;
   --border: #2e303a;
   --accent: #ca633a;
   --accent-contrast: #fff;
   --erro: #c0392b;
   --whatsapp: #25d366;
+  --container-bg: #FFFDD0;
 
   --sans: system-ui, "Segoe UI", Roboto, sans-serif;
-
   font: 17px/1.45 var(--sans);
-  color-scheme: light dark;
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
 import { NavBar } from "./components/layout/NavBar";
+import { TelaCarregamento } from "./components/layout/TelaCarregamento";
 import { AdminAgendaPage } from "./pages/admin/AdminAgendaPage";
 import { AdminClientesPage } from "./pages/admin/AdminClientesPage";
 import { AdminHomePage } from "./pages/admin/AdminHomePage";
@@ -29,6 +30,7 @@ function RolarParaAncora() {
 function App() {
     return (
         <>
+            <TelaCarregamento />
             <RolarParaAncora />
             <NavBar />
             <main className="conteudo">

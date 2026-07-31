@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { FormProvider, useForm } from "react-hook-form";
+import { BotaoVoltar } from "../components/layout/BotaoVoltar";
 import { AlunoFields } from "../components/agendamento/AlunoFields";
 import { AnamneseFields } from "../components/agendamento/AnamneseFields";
 import { ClienteFields } from "../components/agendamento/ClienteFields";
@@ -249,6 +250,7 @@ export function AgendarPage() {
 
     return (
         <div className="pagina-agendar">
+            <BotaoVoltar destino="/" />
             <h1>Agendar</h1>
             <FormProvider {...form}>
                 <form onSubmit={form.handleSubmit((v) => mutation.mutate(v))}>

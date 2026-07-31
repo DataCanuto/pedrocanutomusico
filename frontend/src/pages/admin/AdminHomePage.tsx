@@ -13,7 +13,7 @@ const ACOES = [
 
 export function AdminHomePage() {
     return (
-        <AdminGate titulo="Área do professor">
+        <AdminGate titulo="Área do professor" destinoVoltar="/">
             {() => (
                 <div className="admin-hub">
                     {ACOES.map((acao) => (

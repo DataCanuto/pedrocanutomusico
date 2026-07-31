@@ -1,8 +1,12 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
+/** Só faz sentido na navegação da home (âncoras Sobre/Serviços) - fora dela ela some. */
 export function NavBar() {
+    const { pathname } = useLocation();
+    if (pathname !== "/") return null;
+
     return (
-        <nav className="navbar">
+        <nav className="navbar navbar-fixa">
             <Link to="/" className="marca">
                 Pedro Canuto
             </Link>

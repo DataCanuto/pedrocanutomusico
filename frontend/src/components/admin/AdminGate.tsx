@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { useAdminKey } from "../../hooks/useAdminKey";
+import { BotaoVoltar } from "../layout/BotaoVoltar";
 import { extrairMensagemErro } from "../../services/api";
 import { verificarAdminKey } from "../../services/adminAuthService";
 
@@ -14,7 +15,15 @@ import { verificarAdminKey } from "../../services/adminAuthService";
  * só descobrir o problema depois, com cada página (turmas, eventos, clientes...) falhando
  * separadamente e sem deixar claro que a causa era a mesma chave inválida em todas elas.
  */
-export function AdminGate({ titulo, children }: { titulo: string; children: (adminKey: string) => ReactNode }) {
+export function AdminGate({
+    titulo,
+    destinoVoltar = "/admin",
+    children,
+}: {
+    titulo: string;
+    destinoVoltar?: string;
+    children: (adminKey: string) => ReactNode;
+}) {
     const { adminKey, setAdminKey, temChave } = useAdminKey();
     const [chaveDigitada, setChaveDigitada] = useState("");
     const [erroChave, setErroChave] = useState<string | null>(null);
@@ -42,6 +51,7 @@ export function AdminGate({ titulo, children }: { titulo: string; children: (adm
     if (!temChave) {
         return (
             <div className="pagina-admin">
+                <BotaoVoltar destino="/" />
                 <h1>Área do professor</h1>
                 <p>
                     Informe a chave de administrador para acessar: <strong>{titulo}</strong>
@@ -67,6 +77,7 @@ export function AdminGate({ titulo, children }: { titulo: string; children: (adm
 
     return (
         <div className="pagina-admin">
+            <BotaoVoltar destino={destinoVoltar} />
             <div className="admin-header">
                 <h1>{titulo}</h1>
                 <button onClick={() => setAdminKey("")}>Trocar chave</button>
