@@ -4,10 +4,10 @@ import { AccordionItem } from "../components/ui/Accordion";
 import { SERVICOS, type BlocoServico } from "../data/servicos";
 
 const KPIS = [
-    "quase 10 anos de atuação",
-    "centenas de crianças acompanhadas",
-    "milhares de aulas realizadas",
-    "dezenas de escolas e empresas atendidas em Salvador",
+    "Mais de 10 anos de atuação como músico",
+    "Milhares de aulas realizadas",
+    "Centenas de familias atendidas em eventos",
+    "Dezenas de escolas e empresas atendidas em Salvador",
 ];
 
 export function HomePage() {

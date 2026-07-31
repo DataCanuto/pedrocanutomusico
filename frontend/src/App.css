@@ -1,7 +1,9 @@
 .navbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 8px 16px;
   padding: 16px 24px;
   border-bottom: 1px solid var(--border);
 }
@@ -72,12 +74,12 @@
 }
 
 .hero h1 {
-  font-size: 36px;
+  font-size: clamp(26px, 7vw, 36px);
   margin: 12px 0 16px;
 }
 
 .hero-lead {
-  text-align: left;
+  text-align: justify;
 }
 
 .botao-principal,
