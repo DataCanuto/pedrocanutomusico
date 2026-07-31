@@ -63,6 +63,28 @@ public class Turma {
     @Column(nullable = false)
     private String local;
 
+    /**
+     * Endereço estruturado de onde a turma acontece - nulo só para turmas criadas antes desta
+     * coluna existir (o dado original foi perdido, já que só {@link #local} era gravado). Colunas
+     * simples em vez de reaproveitar {@link Endereco}: aquela entidade tem FK obrigatória para
+     * Cliente, não serve para Turma sem alterar esse relacionamento.
+     */
+    @Column(length = 9)
+    private String enderecoCep;
+
+    private String enderecoRua;
+
+    private String enderecoNumero;
+
+    private String enderecoBairro;
+
+    private String enderecoCidade;
+
+    @Column(length = 2)
+    private String enderecoEstado;
+
+    private String enderecoComplemento;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private EStatusTurma status = EStatusTurma.ATIVA;

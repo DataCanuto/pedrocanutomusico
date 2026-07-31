@@ -296,6 +296,8 @@ export interface Turma {
     diaSemana: EDiaSemana;
     hora: string;
     local: string;
+    /** Nulo só para turmas criadas antes do endereço estruturado existir. */
+    endereco: EnderecoRequest | null;
     status: EStatusTurma;
     criadaEm: string;
 }

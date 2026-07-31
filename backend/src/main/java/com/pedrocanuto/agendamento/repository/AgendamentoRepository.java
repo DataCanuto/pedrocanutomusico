@@ -14,6 +14,9 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long> 
     /** Usado para derivar aulasRestantes de uma Matricula: contratadas - este count. */
     long countByMatriculaIdAndStatusNot(Long matriculaId, EStatusAgendamento status);
 
+    /** Usado para inferir dia da semana/horário/valor da última aula de uma Matricula - ver AgendamentoService#confirmarRecorrencia. */
+    Optional<Agendamento> findFirstByMatriculaIdAndStatusNotOrderByDataDescHoraDesc(Long matriculaId, EStatusAgendamento status);
+
     /** Usado para os contadores agregados no response de Aluno (agendadas/confirmadas/finalizadas). */
     long countByAlunoIdAndStatus(Long alunoId, EStatusAgendamento status);
 

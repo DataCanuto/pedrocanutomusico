@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { AcoesContato } from "../../components/admin/AcoesContato";
 import { AdminGate } from "../../components/admin/AdminGate";
 import {
+    confirmarRecorrenciaAdmin,
     definirOrcamentoAdmin,
     listarAgendamentosAdmin,
     transicionarStatusAdmin,
@@ -79,19 +80,30 @@ function Agenda({ adminKey }: { adminKey: string }) {
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-agendamentos"] }),
     });
 
+    const recorrenciaMutation = useMutation({
+        mutationFn: ({ matriculaId }: { matriculaId: number; agendamentoId: number }) =>
+            confirmarRecorrenciaAdmin(matriculaId, adminKey),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-agendamentos"] }),
+    });
+
     const acoes: AcoesAgendamento = {
         onAcao: (id, acao) => acaoMutation.mutate({ id, acao }),
         onDefinirOrcamento: (id, valor) => orcamentoMutation.mutate({ id, valor }),
+        onConfirmarRecorrencia: (matriculaId, agendamentoId) => recorrenciaMutation.mutate({ matriculaId, agendamentoId }),
         idPendente: acaoMutation.isPending
             ? (acaoMutation.variables?.id ?? null)
             : orcamentoMutation.isPending
               ? (orcamentoMutation.variables?.id ?? null)
-              : null,
+              : recorrenciaMutation.isPending
+                ? (recorrenciaMutation.variables?.agendamentoId ?? null)
+                : null,
         erro: acaoMutation.isError
             ? extrairMensagemErro(acaoMutation.error, "Não foi possível atualizar o status.")
             : orcamentoMutation.isError
               ? extrairMensagemErro(orcamentoMutation.error, "Não foi possível definir o orçamento.")
-              : null,
+              : recorrenciaMutation.isError
+                ? extrairMensagemErro(recorrenciaMutation.error, "Não foi possível confirmar a recorrência.")
+                : null,
     };
 
     const porDia = useMemo(() => {
@@ -159,6 +171,7 @@ function Agenda({ adminKey }: { adminKey: string }) {
 interface AcoesAgendamento {
     onAcao: (id: number, acao: AcaoDeStatus) => void;
     onDefinirOrcamento: (id: number, valor: number) => void;
+    onConfirmarRecorrencia: (matriculaId: number, agendamentoId: number) => void;
     idPendente: number | null;
     erro: string | null;
 }
@@ -199,6 +212,7 @@ function ListaDoDia({ dia, acoes }: { dia: AgendamentoResponse[]; acoes: AcoesAg
                 const acoesDisponiveis = ACOES_POR_STATUS[agendamento.status];
                 const nomeExibido = agendamento.alunoNome ?? agendamento.clienteNome;
                 const responsavelDiferente = agendamento.alunoNome != null && agendamento.alunoNome !== agendamento.clienteNome;
+                const matriculaId = agendamento.matriculaId;
                 return (
                     <li key={agendamento.id}>
                         <div>
@@ -220,6 +234,15 @@ function ListaDoDia({ dia, acoes }: { dia: AgendamentoResponse[]; acoes: AcoesAg
                             ))}
                             {agendamento.categoria === "EVENTO" && agendamento.valorCobrado == null && (
                                 <OrcamentoForm agendamento={agendamento} acoes={acoes} />
+                            )}
+                            {agendamento.categoria !== "EVENTO" && matriculaId != null && (
+                                <button
+                                    type="button"
+                                    disabled={pendente}
+                                    onClick={() => acoes.onConfirmarRecorrencia(matriculaId, agendamento.id)}
+                                >
+                                    Confirmar recorrência (próx. mês)
+                                </button>
                             )}
                         </div>
                     </li>

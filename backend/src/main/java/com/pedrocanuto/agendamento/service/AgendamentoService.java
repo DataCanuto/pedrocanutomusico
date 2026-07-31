@@ -144,7 +144,7 @@ public class AgendamentoService {
         agendamentos.add(primeiro);
         for (GeradorDeDatasRecorrentes.AgendaSlot slot : slots.subList(1, slots.size())) {
             agendamentos.add(criarAgendamentoIndividual(cliente, primeiro.getAluno(), primeiro.getMatricula(), precoServico,
-                    dto.instrumento(), slot.data(), slot.hora(), null, null, dto.observacoes()));
+                    dto.instrumento(), slot.data(), slot.hora(), null, null, valorPorAula(primeiro.getMatricula()), dto.observacoes()));
         }
 
         if (dto.categoria() == ECategoriaServico.MUSICOTERAPIA) {
@@ -182,7 +182,7 @@ public class AgendamentoService {
         agendamentos.add(primeiro);
         for (GeradorDeDatasRecorrentes.AgendaSlot slot : slots.subList(1, slots.size())) {
             agendamentos.add(criarAgendamentoIndividual(cliente, primeiro.getAluno(), primeiro.getMatricula(), precoServico,
-                    turma.getInstrumento(), slot.data(), slot.hora(), turma.getLocal(), turma, observacoes));
+                    turma.getInstrumento(), slot.data(), slot.hora(), turma.getLocal(), turma, valorPorAula(primeiro.getMatricula()), observacoes));
         }
 
         List<AgendamentoResponseDTO> respostas = new ArrayList<>(agendamentos.size());
@@ -215,17 +215,21 @@ public class AgendamentoService {
                                         LocalDate data, LocalTime hora, String local, Turma turma, String observacoes) {
         Aluno aluno = alunoService.buscarOuCriarParaResponsavel(cliente, alunoSelecao);
         Matricula matricula = matriculaService.criar(cliente, aluno, precoServico, tipoContratacao, instrumento);
-        return criarAgendamentoIndividual(cliente, aluno, matricula, precoServico, instrumento, data, hora, local, turma, observacoes);
+        return criarAgendamentoIndividual(cliente, aluno, matricula, precoServico, instrumento, data, hora, local, turma,
+                valorPorAula(matricula), observacoes);
     }
 
     /**
      * Monta e salva um único Agendamento contra uma Matricula já existente - núcleo reaproveitado
      * por {@link #criarAgendamentoDeAula} (que cria a matrícula antes), pelo fluxo de pacote
-     * recorrente ({@link #criarPacoteRecorrente}) e por {@link #agendarProximaAula}.
+     * recorrente ({@link #criarPacoteRecorrente}), por {@link #agendarProximaAula} e por
+     * {@link #confirmarRecorrencia}. valorCobrado é decidido pelo chamador (normalmente
+     * {@link #valorPorAula(Matricula)}, mas {@link #confirmarRecorrencia} propaga o valor da
+     * última sessão em vez do preço atual do catálogo) - este método só persiste.
      */
     private Agendamento criarAgendamentoIndividual(Cliente cliente, Aluno aluno, Matricula matricula, PrecoServico precoServico,
                                                     EInstrumento instrumento, LocalDate data, LocalTime hora, String local,
-                                                    Turma turma, String observacoes) {
+                                                    Turma turma, BigDecimal valorCobrado, String observacoes) {
         Agendamento agendamento = new Agendamento();
         agendamento.setCliente(cliente);
         agendamento.setCategoria(precoServico.getCategoria());
@@ -235,7 +239,7 @@ public class AgendamentoService {
         agendamento.setTurma(turma);
         agendamento.setInstrumento(instrumento);
         agendamento.setLocal(local);
-        agendamento.setValorCobrado(valorPorAula(matricula));
+        agendamento.setValorCobrado(valorCobrado);
         agendamento.setDuracaoMinutos(precoServico.getDuracaoPadraoMinutos());
         agendamento.setData(data);
         agendamento.setHora(hora);
@@ -263,9 +267,55 @@ public class AgendamentoService {
         validarDisponibilidade(dto.data(), dto.hora(), matricula.getPrecoServico().getDuracaoPadraoMinutos());
 
         Agendamento agendamento = criarAgendamentoIndividual(matricula.getCliente(), matricula.getAluno(), matricula,
-                matricula.getPrecoServico(), matricula.getInstrumento(), dto.data(), dto.hora(), null, null, dto.observacoes());
+                matricula.getPrecoServico(), matricula.getInstrumento(), dto.data(), dto.hora(), null, null,
+                valorPorAula(matricula), dto.observacoes());
 
         return agendamentoMapper.toResponseDTO(agendamento);
+    }
+
+    /**
+     * Confirma a recorrência de um pacote de aula/sessão (Musicalização/Musicoterapia/Instrumento -
+     * não se aplica a EVENTO, que não é recorrente) para o mês seguinte: infere dia da semana,
+     * horário e valor a partir do último Agendamento não cancelado da Matricula informada, e
+     * garante as próximas {@link ETipoContratacao#PACOTE_4} aulas nesse mesmo padrão. Fecha uma
+     * NOVA Matricula para elas (em vez de estender a antiga) porque aulasContratadas nunca muda
+     * depois de criado - ver {@link MatriculaService#calcularAulasRestantes} - o que preserva o
+     * histórico de cada ciclo contratado. valorCobrado de cada aula nova é o snapshot da última
+     * sessão (não o preço atual do catálogo), para não repreçar silenciosamente um aluno já
+     * matriculado se a tabela de preços mudar entre um mês e outro.
+     */
+    public AgendamentoCriadoResponseDTO confirmarRecorrencia(Long matriculaId) {
+        Matricula matriculaAtual = matriculaService.buscarPorId(matriculaId);
+        if (matriculaAtual.getStatus() != EStatusMatricula.ATIVA) {
+            throw new RegraDeNegocioException("Matrícula não está ativa");
+        }
+
+        Agendamento ultimo = agendamentoRepository
+                .findFirstByMatriculaIdAndStatusNotOrderByDataDescHoraDesc(matriculaId, EStatusAgendamento.CANCELADO)
+                .orElseThrow(() -> new RegraDeNegocioException(
+                        "Matrícula não tem nenhuma aula não cancelada para basear a renovação"));
+
+        PrecoServico precoServico = precoServicoService.buscarPorCategoriaModalidadeEPacote(
+                matriculaAtual.getPrecoServico().getCategoria(), matriculaAtual.getPrecoServico().getModalidade(), ETipoContratacao.PACOTE_4);
+
+        List<HorarioRecorrenteRequestDTO> recorrencia =
+                List.of(new HorarioRecorrenteRequestDTO(ultimo.getData().getDayOfWeek(), ultimo.getHora()));
+        List<GeradorDeDatasRecorrentes.AgendaSlot> slots = GeradorDeDatasRecorrentes.gerar(
+                recorrencia, ETipoContratacao.PACOTE_4.getQuantidadeAulas(), ultimo.getData().plusDays(1));
+        slots.forEach(slot -> validarDisponibilidade(slot.data(), slot.hora(), precoServico.getDuracaoPadraoMinutos()));
+
+        Matricula novaMatricula = matriculaService.criar(matriculaAtual.getCliente(), matriculaAtual.getAluno(),
+                precoServico, ETipoContratacao.PACOTE_4, matriculaAtual.getInstrumento());
+
+        String observacoes = "Renovação automática da recorrência da matrícula #%d".formatted(matriculaId);
+        List<AgendamentoResponseDTO> respostas = new ArrayList<>(slots.size());
+        for (GeradorDeDatasRecorrentes.AgendaSlot slot : slots) {
+            Agendamento agendamento = criarAgendamentoIndividual(matriculaAtual.getCliente(), matriculaAtual.getAluno(),
+                    novaMatricula, precoServico, matriculaAtual.getInstrumento(), slot.data(), slot.hora(),
+                    ultimo.getLocal(), ultimo.getTurma(), ultimo.getValorCobrado(), observacoes);
+            respostas.add(agendamentoMapper.toResponseDTO(agendamento));
+        }
+        return new AgendamentoCriadoResponseDTO(novaMatricula.getId(), respostas);
     }
 
     public AgendamentoResponseDTO definirOrcamento(Long id, BigDecimal valor) {

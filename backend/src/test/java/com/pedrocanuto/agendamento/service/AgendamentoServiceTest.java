@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -451,6 +452,125 @@ class AgendamentoServiceTest {
         agendamentoService.checkIn(6L);
 
         assertThat(agendamento.getDataHoraCheckIn()).isNotNull();
+    }
+
+    @Test
+    void confirmarRecorrenciaGeraQuatroAulasComDiaHoraEValorDaUltimaSessao() {
+        LocalDate dataUltima = LocalDate.now().minusDays(10);
+        Cliente cliente = new Cliente();
+        cliente.setId(1L);
+        Aluno aluno = new Aluno();
+        aluno.setId(2L);
+        PrecoServico precoAvulso = precoMusicoterapiaIndividualAvulso();
+        Matricula matriculaAtual = matriculaDe(precoAvulso, ETipoContratacao.AVULSO);
+        matriculaAtual.setId(20L);
+        matriculaAtual.setCliente(cliente);
+        matriculaAtual.setAluno(aluno);
+        matriculaAtual.setStatus(EStatusMatricula.ATIVA);
+
+        Agendamento ultimo = new Agendamento();
+        ultimo.setCategoria(ECategoriaServico.MUSICOTERAPIA);
+        ultimo.setPrecoServico(precoAvulso);
+        ultimo.setData(dataUltima);
+        ultimo.setHora(LocalTime.of(15, 0));
+        ultimo.setValorCobrado(new BigDecimal("180.00"));
+
+        PrecoServico pacote4 = precoMusicoterapiaIndividualAvulso();
+        pacote4.setTipoContratacao(ETipoContratacao.PACOTE_4);
+        pacote4.setValor(new BigDecimal("600.00"));
+
+        Matricula novaMatricula = matriculaDe(pacote4, ETipoContratacao.PACOTE_4);
+        novaMatricula.setId(99L);
+
+        when(matriculaService.buscarPorId(20L)).thenReturn(matriculaAtual);
+        when(agendamentoRepository.findFirstByMatriculaIdAndStatusNotOrderByDataDescHoraDesc(20L, EStatusAgendamento.CANCELADO))
+                .thenReturn(java.util.Optional.of(ultimo));
+        when(precoServicoService.buscarPorCategoriaModalidadeEPacote(
+                ECategoriaServico.MUSICOTERAPIA, EModalidadeServico.INDIVIDUAL, ETipoContratacao.PACOTE_4))
+                .thenReturn(pacote4);
+        when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of());
+        when(matriculaService.criar(any(), any(), any(), any(), any())).thenReturn(novaMatricula);
+        when(agendamentoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        AgendamentoCriadoResponseDTO resposta = agendamentoService.confirmarRecorrencia(20L);
+
+        assertThat(resposta.matriculaId()).isEqualTo(99L);
+        assertThat(resposta.agendamentos()).hasSize(4);
+
+        ArgumentCaptor<Agendamento> captor = ArgumentCaptor.forClass(Agendamento.class);
+        verify(agendamentoRepository, times(4)).save(captor.capture());
+        List<Agendamento> criados = captor.getAllValues();
+        assertThat(criados).extracting(Agendamento::getData)
+                .containsExactly(dataUltima.plusDays(7), dataUltima.plusDays(14), dataUltima.plusDays(21), dataUltima.plusDays(28));
+        assertThat(criados).allSatisfy(a -> {
+            assertThat(a.getHora()).isEqualTo(LocalTime.of(15, 0));
+            assertThat(a.getValorCobrado()).isEqualByComparingTo("180.00");
+            assertThat(a.getMatricula()).isSameAs(novaMatricula);
+        });
+    }
+
+    @Test
+    void confirmarRecorrenciaSemAulaAnteriorNaoCanceladaLancaExcecao() {
+        Matricula matricula = new Matricula();
+        matricula.setId(21L);
+        matricula.setStatus(EStatusMatricula.ATIVA);
+        when(matriculaService.buscarPorId(21L)).thenReturn(matricula);
+        when(agendamentoRepository.findFirstByMatriculaIdAndStatusNotOrderByDataDescHoraDesc(21L, EStatusAgendamento.CANCELADO))
+                .thenReturn(java.util.Optional.empty());
+
+        assertThatThrownBy(() -> agendamentoService.confirmarRecorrencia(21L))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("nenhuma aula");
+        verify(agendamentoRepository, never()).save(any());
+    }
+
+    @Test
+    void confirmarRecorrenciaContraMatriculaCanceladaLancaExcecao() {
+        Matricula matricula = new Matricula();
+        matricula.setId(22L);
+        matricula.setStatus(EStatusMatricula.CANCELADA);
+        when(matriculaService.buscarPorId(22L)).thenReturn(matricula);
+
+        assertThatThrownBy(() -> agendamentoService.confirmarRecorrencia(22L))
+                .isInstanceOf(RegraDeNegocioException.class);
+        verify(agendamentoRepository, never()).save(any());
+    }
+
+    @Test
+    void confirmarRecorrenciaComConflitoDeHorarioNaoCriaNenhumAgendamento() {
+        LocalDate dataUltima = LocalDate.now().minusDays(10);
+        Matricula matriculaAtual = matriculaDe(precoMusicoterapiaIndividualAvulso(), ETipoContratacao.AVULSO);
+        matriculaAtual.setId(23L);
+        matriculaAtual.setCliente(new Cliente());
+        matriculaAtual.setAluno(new Aluno());
+        matriculaAtual.setStatus(EStatusMatricula.ATIVA);
+
+        Agendamento ultimo = new Agendamento();
+        ultimo.setCategoria(ECategoriaServico.MUSICOTERAPIA);
+        ultimo.setPrecoServico(matriculaAtual.getPrecoServico());
+        ultimo.setData(dataUltima);
+        ultimo.setHora(LocalTime.of(15, 0));
+        ultimo.setValorCobrado(new BigDecimal("180.00"));
+
+        PrecoServico pacote4 = precoMusicoterapiaIndividualAvulso();
+        pacote4.setTipoContratacao(ETipoContratacao.PACOTE_4);
+
+        Agendamento conflitante = new Agendamento();
+        conflitante.setHora(LocalTime.of(15, 0));
+        conflitante.setDuracaoMinutos(50);
+
+        when(matriculaService.buscarPorId(23L)).thenReturn(matriculaAtual);
+        when(agendamentoRepository.findFirstByMatriculaIdAndStatusNotOrderByDataDescHoraDesc(23L, EStatusAgendamento.CANCELADO))
+                .thenReturn(java.util.Optional.of(ultimo));
+        when(precoServicoService.buscarPorCategoriaModalidadeEPacote(
+                ECategoriaServico.MUSICOTERAPIA, EModalidadeServico.INDIVIDUAL, ETipoContratacao.PACOTE_4))
+                .thenReturn(pacote4);
+        when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of(conflitante));
+
+        assertThatThrownBy(() -> agendamentoService.confirmarRecorrencia(23L))
+                .isInstanceOf(RegraDeNegocioException.class);
+        verify(matriculaService, never()).criar(any(), any(), any(), any(), any());
+        verify(agendamentoRepository, never()).save(any());
     }
 
     private PrecoServico precoMusicalizacaoIndividualAvulso() {

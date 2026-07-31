@@ -1,6 +1,7 @@
 package com.pedrocanuto.agendamento.controller.admin;
 
 import com.pedrocanuto.agendamento.dto.request.AgendarProximaAulaRequestDTO;
+import com.pedrocanuto.agendamento.dto.response.AgendamentoCriadoResponseDTO;
 import com.pedrocanuto.agendamento.dto.response.AgendamentoResponseDTO;
 import com.pedrocanuto.agendamento.service.AgendamentoService;
 import jakarta.validation.Valid;
@@ -32,5 +33,11 @@ public class MatriculaAdminController {
     public ResponseEntity<AgendamentoResponseDTO> agendarProximaAula(@PathVariable Long id,
                                                                        @Valid @RequestBody AgendarProximaAulaRequestDTO dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(agendamentoService.agendarProximaAula(id, dto));
+    }
+
+    /** Sem request body - dia da semana, horário e valor são inferidos da última aula da matrícula (ver AgendamentoService#confirmarRecorrencia). */
+    @PostMapping("/{id}/confirmar-recorrencia")
+    public ResponseEntity<AgendamentoCriadoResponseDTO> confirmarRecorrencia(@PathVariable Long id) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(agendamentoService.confirmarRecorrencia(id));
     }
 }
