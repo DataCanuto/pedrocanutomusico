@@ -241,8 +241,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: var(--bg-muted);
-  color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
   font-weight: 700;
   font-size: 18px;
 }
@@ -258,6 +258,9 @@
 }
 
 .accordion-painel-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   overflow: hidden;
   padding: 0 20px;
 }
