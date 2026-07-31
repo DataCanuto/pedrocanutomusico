@@ -647,10 +647,10 @@
 .agenda-acoes button {
   padding: 6px 12px;
   font-size: 13px;
-  border: 1px solid var(--accent);
+  border: 1px solid var(--accent-contrast);
   border-radius: 6px;
   background: transparent;
-  color: var(--accent);
+  color: var(--accent-contrast);
 }
 
 .agenda-acoes button:disabled {
