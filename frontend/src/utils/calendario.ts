@@ -22,6 +22,21 @@ function paraData(iso: string): Date {
     return new Date(ano, mes - 1, dia);
 }
 
+/** Idade completa na data de referência (default: hoje). Parsing local (evita o bug de fuso de `new Date(iso)` direto, que interpreta datas ISO como UTC). */
+export function calcularIdade(dataNascimentoIso: string, dataReferenciaIso?: string): number | null {
+    if (!dataNascimentoIso) return null;
+    const nascimento = paraData(dataNascimentoIso);
+    if (Number.isNaN(nascimento.getTime())) return null;
+
+    const referencia = dataReferenciaIso ? paraData(dataReferenciaIso) : new Date();
+    let idade = referencia.getFullYear() - nascimento.getFullYear();
+    const aindaNaoFezAniversario =
+        referencia.getMonth() < nascimento.getMonth() ||
+        (referencia.getMonth() === nascimento.getMonth() && referencia.getDate() < nascimento.getDate());
+    if (aindaNaoFezAniversario) idade -= 1;
+    return idade;
+}
+
 function somarDias(iso: string, dias: number): string {
     const data = paraData(iso);
     data.setDate(data.getDate() + dias);

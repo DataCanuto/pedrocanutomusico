@@ -18,6 +18,8 @@ import { criarAgendamento } from "../services/agendamentoService";
 import { listarPrecos } from "../services/precoService";
 import { inscreverEmTurma } from "../services/turmaService";
 import { montarLinkWhatsApp } from "../services/whatsapp";
+import { formatarMoeda } from "../types/labels";
+import { calcularIdade, formatarDataBr } from "../utils/calendario";
 import type {
     AgendamentoCriadoResponse,
     AgendamentoRequest,
@@ -220,6 +222,63 @@ export function AgendarPage() {
     if (mutation.isSuccess) {
         const { agendamentos } = mutation.data;
         const primeiro = agendamentos[0];
+        const variaveis = mutation.variables;
+
+        const ehAniversarioUnico =
+            agendamentos.length === 1 && primeiro.categoria === "EVENTO" && primeiro.tipoEvento === "ANIVERSARIO" && variaveis != null;
+
+        if (ehAniversarioUnico && variaveis) {
+            const nomeAniversariante = primeiro.alunoNome ?? primeiro.clienteNome;
+            const dataNascimento = variaveis.paraMim ? variaveis.clienteDataNascimento : variaveis.alunoDataNascimento;
+            const idade = calcularIdade(dataNascimento, primeiro.data);
+            const sinalizacao = primeiro.valorCobrado != null ? primeiro.valorCobrado / 2 : null;
+            const horaCurta = primeiro.hora.slice(0, 5);
+            const mensagemWhatsApp =
+                `Olá! Acabei de agendar a festa de aniversário de ${idade} anos de ${nomeAniversariante}, para ${formatarDataBr(primeiro.data)} às ${horaCurta}` +
+                (primeiro.local ? `, em ${primeiro.local}` : "") +
+                (sinalizacao != null
+                    ? `. Vou combinar a sinalização de ${formatarMoeda(sinalizacao)} para garantir a confirmação.`
+                    : ".");
+
+            return (
+                <div className="pagina-agendar confirmacao">
+                    <h1>Parabéns!</h1>
+                    <p>
+                        O aniversário de <strong>{idade} anos</strong> de <strong>{nomeAniversariante}</strong> foi agendado com sucesso!
+                    </p>
+                    <h2>Informações do agendamento</h2>
+                    <ul>
+                        <li>
+                            Data: <strong>{formatarDataBr(primeiro.data)}</strong>
+                        </li>
+                        <li>
+                            Horário: <strong>{horaCurta}</strong>
+                        </li>
+                        {primeiro.local && (
+                            <li>
+                                Endereço: <strong>{primeiro.local}</strong>
+                            </li>
+                        )}
+                        {primeiro.valorCobrado != null && (
+                            <li>
+                                Valor total: <strong>{formatarMoeda(primeiro.valorCobrado)}</strong>
+                            </li>
+                        )}
+                        {sinalizacao != null && (
+                            <li>
+                                Sinalização (50%): <strong>{formatarMoeda(sinalizacao)}</strong> - garante a confirmação do evento na
+                                data e horário selecionados.
+                            </li>
+                        )}
+                    </ul>
+                    <p>Confirme os detalhes com a gente no WhatsApp:</p>
+                    <a className="botao-whatsapp" href={montarLinkWhatsApp(mensagemWhatsApp)} target="_blank" rel="noreferrer">
+                        Continuar no WhatsApp
+                    </a>
+                </div>
+            );
+        }
+
         const mensagem =
             agendamentos.length > 1
                 ? `Olá! Acabei de agendar ${primeiro.categoria} (${agendamentos.length} aulas), a primeira para ${primeiro.data} às ${primeiro.hora}.`

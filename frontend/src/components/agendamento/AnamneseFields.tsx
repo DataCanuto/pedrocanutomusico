@@ -1,21 +1,8 @@
 import { useEffect, useState } from "react";
 import { useFormContext } from "react-hook-form";
 import { AccordionItem } from "../ui/Accordion";
+import { calcularIdade } from "../../utils/calendario";
 import type { AgendamentoFormValues } from "./formTypes";
-
-function calcularIdade(dataIso: string): number | null {
-    if (!dataIso) return null;
-    const nascimento = new Date(dataIso);
-    if (Number.isNaN(nascimento.getTime())) return null;
-
-    const hoje = new Date();
-    let idade = hoje.getFullYear() - nascimento.getFullYear();
-    const aindaNaoFezAniversarioEsteAno =
-        hoje.getMonth() < nascimento.getMonth() ||
-        (hoje.getMonth() === nascimento.getMonth() && hoje.getDate() < nascimento.getDate());
-    if (aindaNaoFezAniversarioEsteAno) idade -= 1;
-    return idade;
-}
 
 /**
  * Só é renderizado quando a categoria selecionada é MUSICOTERAPIA (ver AgendarPage). Gravada só
