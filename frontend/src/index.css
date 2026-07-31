@@ -1,10 +1,26 @@
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+
+    background-image: url(".\assets\images\logos\arvoreInstrumentos.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 70%;
+
+    opacity: 0.04;
+
+    pointer-events: none;
+    z-index: -1;
+}
+
 :root {
-  --text: #3f3b46;
-  --text-h: #08060d;
-  --bg: #fff;
-  --bg-muted: #f4f3ec;
-  --border: #e5e4e7;
-  --accent: #aa3bff;
+  --text: #000000;
+  --text-h: #000000;
+  --bg: #e3d1a5;
+  --bg-muted: #ca633a;
+  --border: #2e303a;
+  --accent: #ca633a;
   --accent-contrast: #fff;
   --erro: #c0392b;
   --whatsapp: #25d366;
@@ -19,17 +35,7 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #211e1e;
-    --text-h: #000000;
-    --bg: #e3d1a5;
-    --bg-muted: #ca633a;
-    --border: #2e303a;
-    --accent: #ca633a;
-    --accent-contrast: #f4f3f0;
-  }
-}
+
 
 * {
   box-sizing: border-box;
