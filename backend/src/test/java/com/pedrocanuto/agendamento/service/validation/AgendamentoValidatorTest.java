@@ -50,6 +50,20 @@ class AgendamentoValidatorTest {
     }
 
     @Test
+    void rejeitaSemEnderecoDoCliente() {
+        ClienteRequestDTO clienteSemEndereco =
+                new ClienteRequestDTO("Maria Souza", "71999588950", null, null, null, null, null, List.of());
+        AgendamentoRequestDTO dto = new AgendamentoRequestDTO(
+                clienteSemEndereco, alunoSelecao(), ECategoriaServico.MUSICALIZACAO_INFANTIL, EModalidadeServico.INDIVIDUAL,
+                ETipoContratacao.AVULSO, null, null, null, null, null, null, null,
+                LocalDate.now().plusDays(3), LocalTime.of(10, 0), null, null);
+
+        assertThatThrownBy(() -> validator.validarCamposPorCategoria(dto))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("endereço");
+    }
+
+    @Test
     void aceitaAgendamentoDeAulaComTodosOsCamposObrigatorios() {
         AgendamentoRequestDTO dto = aulaDTO(ECategoriaServico.MUSICALIZACAO_INFANTIL, null);
         assertThatCode(() -> validator.validarCamposPorCategoria(dto)).doesNotThrowAnyException();

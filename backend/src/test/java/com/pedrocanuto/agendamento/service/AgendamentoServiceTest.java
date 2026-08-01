@@ -30,9 +30,11 @@ import com.pedrocanuto.agendamento.dto.request.ClienteRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.EnderecoRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.HorarioRecorrenteRequestDTO;
 import com.pedrocanuto.agendamento.dto.response.AgendamentoCriadoResponseDTO;
+import com.pedrocanuto.agendamento.dto.response.HorarioOcupadoResponseDTO;
 import com.pedrocanuto.agendamento.exception.RegraDeNegocioException;
 import com.pedrocanuto.agendamento.mapper.AgendamentoMapper;
 import com.pedrocanuto.agendamento.repository.AgendamentoRepository;
+import com.pedrocanuto.agendamento.repository.TurmaRepository;
 import com.pedrocanuto.agendamento.service.validation.AgendamentoValidator;
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
@@ -52,6 +54,8 @@ class AgendamentoServiceTest {
     @Mock
     private AgendamentoRepository agendamentoRepository;
     @Mock
+    private TurmaRepository turmaRepository;
+    @Mock
     private ClienteService clienteService;
     @Mock
     private AlunoService alunoService;
@@ -68,7 +72,7 @@ class AgendamentoServiceTest {
 
     @BeforeEach
     void setUp() {
-        agendamentoService = new AgendamentoService(agendamentoRepository, clienteService, alunoService,
+        agendamentoService = new AgendamentoService(agendamentoRepository, turmaRepository, clienteService, alunoService,
                 precoServicoService, matriculaService, anamneseService, new AgendamentoValidator(), agendamentoMapper);
         // toResponseDTO fica sem stub de propósito: nenhum teste aqui verifica o DTO de saída,
         // só o que é passado para o repository - um mock devolve null por padrão, o que basta.
@@ -278,6 +282,85 @@ class AgendamentoServiceTest {
         agendamentoService.criar(aulaRequestDTOComHorario(LocalTime.of(15, 0)));
 
         verify(agendamentoRepository).save(any());
+    }
+
+    @Test
+    void listarHorariosOcupadosUsaMesmaQueryQueExcluiCancelados() {
+        LocalDate data = LocalDate.of(2026, 8, 10);
+        Agendamento existente = agendamentoExistente(LocalTime.of(15, 0), 50);
+        when(agendamentoRepository.findByDataAndStatusNot(data, EStatusAgendamento.CANCELADO)).thenReturn(List.of(existente));
+        when(agendamentoMapper.toHorarioOcupadoDTO(existente)).thenReturn(new HorarioOcupadoResponseDTO(LocalTime.of(15, 0), 50));
+
+        List<HorarioOcupadoResponseDTO> resultado = agendamentoService.listarHorariosOcupados(data);
+
+        assertThat(resultado).containsExactly(new HorarioOcupadoResponseDTO(LocalTime.of(15, 0), 50));
+    }
+
+    /**
+     * Uma Turma ativa ocupa seu horário toda semana assim que é criada, mesmo sem nenhum aluno
+     * matriculado ainda (matrícula gera Agendamentos datados, mas só dentro da janela de 31 dias
+     * de cada família) - ver javadoc de AgendamentoService#validarDisponibilidade.
+     */
+    @Test
+    void criarBloqueiaHorarioQueColideComTurmaAtivaNoMesmoDiaDaSemana() {
+        when(precoServicoService.buscarPorCategoriaModalidadeEPacote(any(), any(), any())).thenReturn(precoMusicalizacaoIndividualAvulso());
+        when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of());
+        when(turmaRepository.findByDiaSemanaAndStatus(any(), any()))
+                .thenReturn(List.of(turmaAtiva(LocalTime.of(15, 0), ECategoriaServico.AULA_INSTRUMENTO)));
+        when(precoServicoService.buscarDuracaoDeGrupo(ECategoriaServico.AULA_INSTRUMENTO)).thenReturn(50);
+
+        assertThatThrownBy(() -> agendamentoService.criar(aulaRequestDTOComHorario(LocalTime.of(15, 15))))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("intervalo");
+
+        verify(agendamentoRepository, never()).save(any());
+    }
+
+    @Test
+    void criarPermiteHorarioForaDaJanelaDaTurmaAtiva() {
+        stubsParaCriarAulaComSucesso();
+        when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of());
+        when(turmaRepository.findByDiaSemanaAndStatus(any(), any()))
+                .thenReturn(List.of(turmaAtiva(LocalTime.of(15, 0), ECategoriaServico.AULA_INSTRUMENTO)));
+        when(precoServicoService.buscarDuracaoDeGrupo(ECategoriaServico.AULA_INSTRUMENTO)).thenReturn(50);
+
+        agendamentoService.criar(aulaRequestDTOComHorario(LocalTime.of(16, 30)));
+
+        verify(agendamentoRepository).save(any());
+    }
+
+    @Test
+    void criarIgnoraTurmaForaDoDiaDaSemanaSolicitado() {
+        stubsParaCriarAulaComSucesso();
+        when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of());
+        // findByDiaSemanaAndStatus já filtra pelo dia da semana da data pedida - simula sem
+        // nenhuma turma nesse dia (mesmo que exista alguma ativa em outro dia).
+        when(turmaRepository.findByDiaSemanaAndStatus(any(), any())).thenReturn(List.of());
+
+        agendamentoService.criar(aulaRequestDTOComHorario(LocalTime.of(15, 0)));
+
+        verify(agendamentoRepository).save(any());
+    }
+
+    @Test
+    void listarHorariosOcupadosIncluiTurmaAtivaDoDiaDaSemana() {
+        LocalDate data = LocalDate.of(2026, 8, 11);
+        when(agendamentoRepository.findByDataAndStatusNot(data, EStatusAgendamento.CANCELADO)).thenReturn(List.of());
+        when(turmaRepository.findByDiaSemanaAndStatus(data.getDayOfWeek(), EStatusTurma.ATIVA))
+                .thenReturn(List.of(turmaAtiva(LocalTime.of(9, 0), ECategoriaServico.MUSICALIZACAO_INFANTIL)));
+        when(precoServicoService.buscarDuracaoDeGrupo(ECategoriaServico.MUSICALIZACAO_INFANTIL)).thenReturn(45);
+
+        List<HorarioOcupadoResponseDTO> resultado = agendamentoService.listarHorariosOcupados(data);
+
+        assertThat(resultado).containsExactly(new HorarioOcupadoResponseDTO(LocalTime.of(9, 0), 45));
+    }
+
+    private Turma turmaAtiva(LocalTime hora, ECategoriaServico categoria) {
+        Turma turma = new Turma();
+        turma.setStatus(EStatusTurma.ATIVA);
+        turma.setCategoria(categoria);
+        turma.setHora(hora);
+        return turma;
     }
 
     private void stubsParaCriarAulaComSucesso() {

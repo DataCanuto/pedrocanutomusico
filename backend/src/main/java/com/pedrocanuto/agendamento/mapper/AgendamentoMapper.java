@@ -2,6 +2,7 @@ package com.pedrocanuto.agendamento.mapper;
 
 import com.pedrocanuto.agendamento.domain.Agendamento;
 import com.pedrocanuto.agendamento.dto.response.AgendamentoResponseDTO;
+import com.pedrocanuto.agendamento.dto.response.HorarioOcupadoResponseDTO;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -19,4 +20,6 @@ public interface AgendamentoMapper {
     @Mapping(target = "modalidade", source = "precoServico.modalidade")
     @Mapping(target = "pacoteEventoNome", source = "precoServico.nome")
     AgendamentoResponseDTO toResponseDTO(Agendamento entity);
+
+    HorarioOcupadoResponseDTO toHorarioOcupadoDTO(Agendamento entity);
 }

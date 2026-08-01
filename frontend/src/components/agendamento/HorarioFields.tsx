@@ -1,15 +1,19 @@
-import { useFieldArray, useFormContext } from "react-hook-form";
-import type { EDiaSemana, ETipoContratacao } from "../../types/domain";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useController, useFieldArray, useFormContext } from "react-hook-form";
+import { listarHorariosOcupados } from "../../services/agendamentoService";
+import type { EDiaSemana, ETipoContratacao, PrecoServico } from "../../types/domain";
 import { DIA_SEMANA_LABELS, QUANTIDADE_AULAS } from "../../types/labels";
+import { slotIndisponivel } from "../../utils/disponibilidade";
 import { gerarSlotsDeHorario } from "../../utils/horarios";
 import { cabeNaJanela, gerarPreviewDeDatas } from "../../utils/recorrencia";
-import { ehPacoteRecorrente, type AgendamentoFormValues } from "./formTypes";
+import { ehPacoteRecorrente, resolverDuracaoMinutos, type AgendamentoFormValues } from "./formTypes";
 
 const SLOTS = gerarSlotsDeHorario();
 const DIAS_SEMANA = Object.keys(DIA_SEMANA_LABELS) as EDiaSemana[];
 const MAX_RECORRENCIAS = 3;
 
-export function HorarioFields() {
+export function HorarioFields({ precos }: { precos: PrecoServico[] }) {
     const {
         register,
         control,
@@ -18,9 +22,35 @@ export function HorarioFields() {
     } = useFormContext<AgendamentoFormValues>();
 
     const categoria = watch("categoria");
+    const modalidade = watch("modalidade");
     const tipoContratacao = watch("tipoContratacao");
+    const eventoPrecoServicoId = watch("eventoPrecoServicoId");
+    const duracaoMinutosEvento = watch("duracaoMinutosEvento");
+    const data = watch("data");
     const recorrencias = watch("recorrencias");
     const { fields, append, remove } = useFieldArray({ control, name: "recorrencias" });
+    const { field: campoHora } = useController({ control, name: "hora", rules: { required: "Selecione o horário" } });
+
+    const duracaoMinutos = resolverDuracaoMinutos(
+        { categoria, modalidade, tipoContratacao, eventoPrecoServicoId, duracaoMinutosEvento },
+        precos,
+    );
+    // Só busca com data preenchida; disabled evita round-trip para um parâmetro vazio.
+    const ocupadosQuery = useQuery({
+        queryKey: ["horarios-ocupados", data],
+        queryFn: () => listarHorariosOcupados(data),
+        enabled: data !== "",
+    });
+    const ocupados = data !== "" ? (ocupadosQuery.data ?? []) : [];
+
+    // Se a data/duração mudar e o horário já escolhido deixar de caber, limpa a seleção em vez
+    // de deixar o formulário guardar (sem o cliente perceber) um horário que agora está bloqueado.
+    useEffect(() => {
+        if (campoHora.value !== "" && duracaoMinutos != null && slotIndisponivel(campoHora.value, duracaoMinutos, ocupados)) {
+            campoHora.onChange("");
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [data, duracaoMinutos, ocupadosQuery.data]);
 
     if (ehPacoteRecorrente(categoria, tipoContratacao)) {
         const quantidadeAulas = tipoContratacao ? QUANTIDADE_AULAS[tipoContratacao as ETipoContratacao] : 0;
@@ -120,15 +150,32 @@ export function HorarioFields() {
             <input id="data" type="date" min={hoje} {...register("data", { required: "Selecione a data" })} />
             {errors.data && <span className="erro-campo">{errors.data.message}</span>}
 
-            <label htmlFor="hora">Horário</label>
-            <select id="hora" {...register("hora", { required: "Selecione o horário" })}>
-                <option value="">Selecione...</option>
-                {SLOTS.map((slot) => (
-                    <option key={slot} value={slot}>
-                        {slot}
-                    </option>
-                ))}
-            </select>
+            <fieldset className="grupo-horario">
+                <legend>Horário</legend>
+                {data !== "" && duracaoMinutos != null && ocupadosQuery.isLoading && (
+                    <p className="aviso">Carregando horários disponíveis...</p>
+                )}
+                <div className="grade-horarios">
+                    {SLOTS.map((slot) => {
+                        const bloqueado = data !== "" && duracaoMinutos != null && slotIndisponivel(slot, duracaoMinutos, ocupados);
+                        const selecionado = campoHora.value === slot;
+                        return (
+                            <button
+                                key={slot}
+                                type="button"
+                                className={`slot-horario${selecionado ? " slot-horario-selecionado" : ""}${bloqueado ? " slot-horario-bloqueado" : ""}`}
+                                disabled={bloqueado}
+                                aria-pressed={selecionado}
+                                title={bloqueado ? "Horário indisponível - já há um compromisso marcado perto desse horário" : undefined}
+                                onClick={() => campoHora.onChange(slot)}
+                            >
+                                {slot}
+                            </button>
+                        );
+                    })}
+                </div>
+                {data === "" && <p className="aviso">Escolha a data acima para ver os horários já ocupados.</p>}
+            </fieldset>
             {errors.hora && <span className="erro-campo">{errors.hora.message}</span>}
 
             <label htmlFor="observacoes">Observações (opcional)</label>

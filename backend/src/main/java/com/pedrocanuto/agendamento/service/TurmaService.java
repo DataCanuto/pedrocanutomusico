@@ -6,6 +6,8 @@ import com.pedrocanuto.agendamento.domain.Cliente;
 import com.pedrocanuto.agendamento.domain.Turma;
 import com.pedrocanuto.agendamento.domain.enums.ECategoriaServico;
 import com.pedrocanuto.agendamento.domain.enums.EStatusTurma;
+import com.pedrocanuto.agendamento.dto.request.ClienteRequestDTO;
+import com.pedrocanuto.agendamento.dto.request.EnderecoRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.InscricaoTurmaRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.TurmaRequestDTO;
 import com.pedrocanuto.agendamento.dto.response.AgendamentoCriadoResponseDTO;
@@ -144,8 +146,30 @@ public class TurmaService {
             throw new RegraDeNegocioException("Esta turma não está mais aceitando inscrições");
         }
 
-        Cliente cliente = clienteService.buscarOuCriar(dto.cliente());
+        Cliente cliente = clienteService.buscarOuCriar(comEnderecoDaTurmaSeAusente(dto.cliente(), turma));
         return agendamentoService.criarInscricaoTurma(cliente, dto.aluno(), turma, dto.tipoContratacao(), dto.observacoes());
+    }
+
+    /**
+     * A aula em grupo acontece sempre no endereço fixo da turma, não na casa do cliente - por
+     * isso o formulário de matrícula não pede (nem exige) endereço próprio (ver ClienteFields no
+     * frontend). Quando o cliente realmente não envia um, usamos o da turma para satisfazer a
+     * regra de "todo Cliente tem pelo menos um endereço" (ver ClienteService#validarEndereco).
+     * Se o cliente enviar um endereço mesmo assim (ex.: já tem cadastro com endereço próprio),
+     * respeitamos o que veio - só preenchemos a lacuna, nunca sobrescrevemos.
+     */
+    private ClienteRequestDTO comEnderecoDaTurmaSeAusente(ClienteRequestDTO cliente, Turma turma) {
+        if (cliente.enderecos() != null && !cliente.enderecos().isEmpty()) {
+            return cliente;
+        }
+        if (turma.getEnderecoCep() == null) {
+            throw new RegraDeNegocioException("Esta turma não tem endereço cadastrado - fale com o professor antes de continuar");
+        }
+        EnderecoRequestDTO enderecoDaTurma = new EnderecoRequestDTO(turma.getEnderecoCep(), turma.getEnderecoRua(),
+                turma.getEnderecoNumero(), turma.getEnderecoBairro(), turma.getEnderecoCidade(), turma.getEnderecoEstado(),
+                turma.getEnderecoComplemento());
+        return new ClienteRequestDTO(cliente.nome(), cliente.telefone(), cliente.email(), cliente.cpf(), cliente.cnpj(),
+                cliente.dataNascimento(), cliente.sexo(), List.of(enderecoDaTurma));
     }
 
     private Turma buscarEntidadePorCodigo(String codigo) {

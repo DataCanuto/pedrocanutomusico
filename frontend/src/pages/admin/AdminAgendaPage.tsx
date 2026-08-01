@@ -56,6 +56,11 @@ function hojeIso(): string {
     return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-${String(hoje.getDate()).padStart(2, "0")}`;
 }
 
+/** Agendamento CANCELADO não ocupa mais o horário (ver validarDisponibilidade no backend) - contagens de "quão ocupado" um dia está devem ignorá-lo, mesmo que ele continue listado no dia para histórico. */
+function contarAtivos(agendamentos: AgendamentoResponse[]): number {
+    return agendamentos.filter((agendamento) => agendamento.status !== "CANCELADO").length;
+}
+
 function Agenda({ adminKey }: { adminKey: string }) {
     const [modo, setModo] = useState<ModoVisualizacao>("mes");
     const hoje = new Date();
@@ -214,7 +219,7 @@ function ListaDoDia({ dia, acoes }: { dia: AgendamentoResponse[]; acoes: AcoesAg
                 const responsavelDiferente = agendamento.alunoNome != null && agendamento.alunoNome !== agendamento.clienteNome;
                 const matriculaId = agendamento.matriculaId;
                 return (
-                    <li key={agendamento.id}>
+                    <li key={agendamento.id} className={agendamento.status === "CANCELADO" ? "agenda-item-cancelado" : undefined}>
                         <div>
                             <strong>{agendamento.hora}</strong> - {CATEGORIA_LABELS[agendamento.categoria]} - {nomeExibido}
                             {responsavelDiferente && <> (responsável: {agendamento.clienteNome})</>} - {agendamento.clienteTelefone} -{" "}
@@ -306,8 +311,8 @@ function VisaoMes({
                                         {diaIso && (
                                             <>
                                                 <span className="agenda-dia-numero">{diaIso.split("-")[2]}</span>
-                                                {agendamentosDoDiaCelula.length > 0 && (
-                                                    <span className="agenda-dia-contagem">{agendamentosDoDiaCelula.length}</span>
+                                                {contarAtivos(agendamentosDoDiaCelula) > 0 && (
+                                                    <span className="agenda-dia-contagem">{contarAtivos(agendamentosDoDiaCelula)}</span>
                                                 )}
                                             </>
                                         )}
@@ -322,7 +327,7 @@ function VisaoMes({
             {diaSelecionado && (
                 <div className="agenda-detalhe-dia">
                     <h2>
-                        {formatarDataBr(diaSelecionado)} - {agendamentosDoDia.length} agendamento{agendamentosDoDia.length === 1 ? "" : "s"}
+                        {formatarDataBr(diaSelecionado)} - {contarAtivos(agendamentosDoDia)} agendamento{contarAtivos(agendamentosDoDia) === 1 ? "" : "s"}
                     </h2>
                     <ListaDoDia dia={agendamentosDoDia} acoes={acoes} />
                 </div>
@@ -392,7 +397,7 @@ function VisaoDia({
 
             <div className="agenda-detalhe-dia">
                 <h2>
-                    {agendamentosDoDia.length} agendamento{agendamentosDoDia.length === 1 ? "" : "s"}
+                    {contarAtivos(agendamentosDoDia)} agendamento{contarAtivos(agendamentosDoDia) === 1 ? "" : "s"}
                 </h2>
                 <ListaDoDia dia={agendamentosDoDia} acoes={acoes} />
             </div>

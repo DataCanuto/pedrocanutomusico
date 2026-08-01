@@ -26,6 +26,9 @@ public class AgendamentoValidator {
     private static final int GRADE_MINUTOS = 15;
 
     public void validarCamposPorCategoria(AgendamentoRequestDTO dto) {
+        if (dto.cliente().enderecos() == null || dto.cliente().enderecos().isEmpty()) {
+            throw new RegraDeNegocioException("Informe pelo menos um endereço");
+        }
         if (dto.categoria().isEvento()) {
             if (dto.hora() == null) {
                 throw new RegraDeNegocioException("hora é obrigatória");

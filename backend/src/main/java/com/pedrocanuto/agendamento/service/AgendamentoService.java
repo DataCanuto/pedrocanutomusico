@@ -11,6 +11,7 @@ import com.pedrocanuto.agendamento.domain.enums.EInstrumento;
 import com.pedrocanuto.agendamento.domain.enums.EModalidadeServico;
 import com.pedrocanuto.agendamento.domain.enums.EStatusAgendamento;
 import com.pedrocanuto.agendamento.domain.enums.EStatusMatricula;
+import com.pedrocanuto.agendamento.domain.enums.EStatusTurma;
 import com.pedrocanuto.agendamento.domain.enums.ETipoContratacao;
 import com.pedrocanuto.agendamento.dto.request.AgendamentoRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.AgendarProximaAulaRequestDTO;
@@ -18,11 +19,13 @@ import com.pedrocanuto.agendamento.dto.request.AlunoSelecaoRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.HorarioRecorrenteRequestDTO;
 import com.pedrocanuto.agendamento.dto.response.AgendamentoCriadoResponseDTO;
 import com.pedrocanuto.agendamento.dto.response.AgendamentoResponseDTO;
+import com.pedrocanuto.agendamento.dto.response.HorarioOcupadoResponseDTO;
 import com.pedrocanuto.agendamento.exception.RecursoNaoEncontradoException;
 import com.pedrocanuto.agendamento.exception.RegraDeNegocioException;
 import com.pedrocanuto.agendamento.mapper.AgendamentoMapper;
 import com.pedrocanuto.agendamento.mapper.EnderecoFormatter;
 import com.pedrocanuto.agendamento.repository.AgendamentoRepository;
+import com.pedrocanuto.agendamento.repository.TurmaRepository;
 import com.pedrocanuto.agendamento.service.validation.AgendamentoValidator;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -52,6 +55,7 @@ public class AgendamentoService {
     private static final int MINUTOS_INTERVALO_ENTRE_COMPROMISSOS = 30;
 
     private final AgendamentoRepository agendamentoRepository;
+    private final TurmaRepository turmaRepository;
     private final ClienteService clienteService;
     private final AlunoService alunoService;
     private final PrecoServicoService precoServicoService;
@@ -60,11 +64,12 @@ public class AgendamentoService {
     private final AgendamentoValidator validator;
     private final AgendamentoMapper agendamentoMapper;
 
-    public AgendamentoService(AgendamentoRepository agendamentoRepository, ClienteService clienteService,
-                               AlunoService alunoService, PrecoServicoService precoServicoService,
+    public AgendamentoService(AgendamentoRepository agendamentoRepository, TurmaRepository turmaRepository,
+                               ClienteService clienteService, AlunoService alunoService, PrecoServicoService precoServicoService,
                                MatriculaService matriculaService, AnamneseService anamneseService,
                                AgendamentoValidator validator, AgendamentoMapper agendamentoMapper) {
         this.agendamentoRepository = agendamentoRepository;
+        this.turmaRepository = turmaRepository;
         this.clienteService = clienteService;
         this.alunoService = alunoService;
         this.precoServicoService = precoServicoService;
@@ -386,6 +391,26 @@ public class AgendamentoService {
                 .orElseThrow(() -> RecursoNaoEncontradoException.paraId("Agendamento", id));
     }
 
+    /**
+     * Pré-visualização pública (sem dado pessoal) dos horários já ocupados num dia, para o
+     * formulário de agendamento desabilitar de cara os slots que colidiriam com a janela de
+     * {@link #MINUTOS_INTERVALO_ENTRE_COMPROMISSOS} minutos antes/depois de um compromisso
+     * existente - mesma fonte de dados (e mesma exclusão de CANCELADO) de
+     * {@link #validarDisponibilidade}, que continua sendo a validação que vale de verdade. Inclui
+     * também as Turmas ativas cujo dia da semana bate com {@code data} (ver
+     * {@link #turmasNoDiaDaSemana}).
+     */
+    @Transactional(readOnly = true)
+    public List<HorarioOcupadoResponseDTO> listarHorariosOcupados(LocalDate data) {
+        List<HorarioOcupadoResponseDTO> ocupados = new ArrayList<>(agendamentoRepository
+                .findByDataAndStatusNot(data, EStatusAgendamento.CANCELADO).stream()
+                .map(agendamentoMapper::toHorarioOcupadoDTO)
+                .toList());
+        turmasNoDiaDaSemana(data).forEach(turma ->
+                ocupados.add(new HorarioOcupadoResponseDTO(turma.getHora(), precoServicoService.buscarDuracaoDeGrupo(turma.getCategoria()))));
+        return ocupados;
+    }
+
     @Transactional(readOnly = true)
     public List<AgendamentoResponseDTO> listar(LocalDate data, ECategoriaServico categoria) {
         List<Agendamento> agendamentos;
@@ -402,30 +427,42 @@ public class AgendamentoService {
     }
 
     /**
-     * A agenda do professor é derivada diretamente dos Agendamentos ativos (não-cancelados) do
-     * dia: um novo compromisso só pode começar depois que o anterior termina + os
-     * {@link #MINUTOS_INTERVALO_ENTRE_COMPROMISSOS} minutos de intervalo (e, simetricamente, só
-     * pode terminar + intervalo antes que o próximo já marcado comece) - ex.: aula de 30 min às
-     * 15h bloqueia 15h-15:59; aula de 50 min às 15h bloqueia 15h-16:29. Comparação em minutos
-     * inteiros desde a meia-noite (em vez de LocalTime.plusMinutes) para não estourar a virada
-     * do dia com durações longas.
+     * A agenda do professor é derivada dos Agendamentos ativos (não-cancelados) do dia mais as
+     * Turmas ativas cujo dia da semana bate com {@code data} - uma Turma ocupa seu horário toda
+     * semana assim que é criada (status ATIVA), independentemente de já ter aluno matriculado
+     * (matrícula gera Agendamentos datados, mas só dentro da janela de 31 dias de cada família -
+     * sem essa checagem por dia da semana, uma Turma recém-criada e ainda vazia não bloquearia
+     * nada). Em ambos os casos, um novo compromisso só pode começar depois que o anterior termina
+     * + os {@link #MINUTOS_INTERVALO_ENTRE_COMPROMISSOS} minutos de intervalo (e, simetricamente,
+     * só pode terminar + intervalo antes que o próximo já marcado comece) - ex.: aula de 30 min às
+     * 15h bloqueia 15h-15:59; aula de 50 min às 15h bloqueia 15h-16:29.
      */
     private void validarDisponibilidade(LocalDate data, LocalTime hora, int duracaoMinutos) {
         int inicioNovo = minutosDoDia(hora);
-        int fimNovoComIntervalo = inicioNovo + duracaoMinutos + MINUTOS_INTERVALO_ENTRE_COMPROMISSOS;
 
-        boolean conflita = agendamentoRepository.findByDataAndStatusNot(data, EStatusAgendamento.CANCELADO).stream()
-                .anyMatch(existente -> {
-                    int inicioExistente = minutosDoDia(existente.getHora());
-                    int fimExistenteComIntervalo = inicioExistente + existente.getDuracaoMinutos() + MINUTOS_INTERVALO_ENTRE_COMPROMISSOS;
-                    return inicioNovo < fimExistenteComIntervalo && inicioExistente < fimNovoComIntervalo;
-                });
+        boolean conflitaComAgendamento = agendamentoRepository.findByDataAndStatusNot(data, EStatusAgendamento.CANCELADO).stream()
+                .anyMatch(existente -> conflita(inicioNovo, duracaoMinutos, minutosDoDia(existente.getHora()), existente.getDuracaoMinutos()));
 
-        if (conflita) {
+        boolean conflitaComTurma = turmasNoDiaDaSemana(data).stream()
+                .anyMatch(turma -> conflita(inicioNovo, duracaoMinutos, minutosDoDia(turma.getHora()),
+                        precoServicoService.buscarDuracaoDeGrupo(turma.getCategoria())));
+
+        if (conflitaComAgendamento || conflitaComTurma) {
             throw new RegraDeNegocioException(
                     "Horário indisponível - já existe um compromisso agendado que não deixa os %d minutos de intervalo necessários antes/depois"
                             .formatted(MINUTOS_INTERVALO_ENTRE_COMPROMISSOS));
         }
+    }
+
+    private List<Turma> turmasNoDiaDaSemana(LocalDate data) {
+        return turmaRepository.findByDiaSemanaAndStatus(data.getDayOfWeek(), EStatusTurma.ATIVA);
+    }
+
+    /** Comparação em minutos inteiros desde a meia-noite (em vez de LocalTime.plusMinutes) para não estourar a virada do dia com durações longas. */
+    private static boolean conflita(int inicioA, int duracaoA, int inicioB, int duracaoB) {
+        int fimAComIntervalo = inicioA + duracaoA + MINUTOS_INTERVALO_ENTRE_COMPROMISSOS;
+        int fimBComIntervalo = inicioB + duracaoB + MINUTOS_INTERVALO_ENTRE_COMPROMISSOS;
+        return inicioA < fimBComIntervalo && inicioB < fimAComIntervalo;
     }
 
     private static int minutosDoDia(LocalTime hora) {

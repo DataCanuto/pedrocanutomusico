@@ -4,7 +4,6 @@ import com.pedrocanuto.agendamento.domain.enums.ESexo;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Pattern;
 import java.time.LocalDate;
@@ -30,7 +29,12 @@ public record ClienteRequestDTO(
 
         ESexo sexo,
 
-        /** Endereço é sempre exigido - todo request que cria/atualiza um Cliente precisa de pelo menos um. */
-        @NotEmpty @Valid List<EnderecoRequestDTO> enderecos
+        /**
+         * Estruturalmente opcional aqui (matrícula em Turma não pede endereço do cliente - ver
+         * TurmaService#inscrever, que usa o endereço da própria turma). Quem exige pelo menos um
+         * é cada fluxo que realmente precisa: AgendamentoValidator (agendamento avulso/evento) e
+         * ClienteService (cadastro/edição direta pelo admin).
+         */
+        @Valid List<EnderecoRequestDTO> enderecos
 ) {
 }

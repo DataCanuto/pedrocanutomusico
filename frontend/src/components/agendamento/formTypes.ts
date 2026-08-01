@@ -6,6 +6,7 @@ import type {
     ESexo,
     ETipoContratacao,
     ETipoEvento,
+    PrecoServico,
 } from "../../types/domain";
 
 /** Forma "achatada" usada pelo react-hook-form; AgendarPage converte isso em AgendamentoRequest no submit. */
@@ -213,4 +214,32 @@ export function ehGrupoDeAula(categoria: ECategoriaServico | "", modalidade: EMo
 /** PACOTE_4/PACOTE_12 (ou qualquer coisa != AVULSO): o cliente escolhe dia(s) da semana + horário em vez de uma data única - ver HorarioFields. */
 export function ehPacoteRecorrente(categoria: ECategoriaServico | "", tipoContratacao: ETipoContratacao | ""): boolean {
     return categoriaEhDeAula(categoria) && tipoContratacao !== "" && tipoContratacao !== "AVULSO";
+}
+
+type CamposDeDuracao = Pick<
+    AgendamentoFormValues,
+    "categoria" | "modalidade" | "tipoContratacao" | "eventoPrecoServicoId" | "duracaoMinutosEvento"
+>;
+
+/**
+ * Duração (minutos) do serviço selecionado - usada por HorarioFields para calcular quais
+ * horários colidiriam com compromissos existentes. Retorna null enquanto a escolha do serviço
+ * ainda não permite saber a duração (nesse caso os horários aparecem todos clicáveis; o backend
+ * segue sendo a validação final em qualquer caso).
+ */
+export function resolverDuracaoMinutos(v: CamposDeDuracao, precos: PrecoServico[]): number | null {
+    if (v.categoria === "EVENTO") {
+        const pacote = precos.find((p) => p.categoria === "EVENTO" && p.id === v.eventoPrecoServicoId);
+        if (pacote?.duracaoPadraoMinutos != null) {
+            return pacote.duracaoPadraoMinutos;
+        }
+        return v.duracaoMinutosEvento !== "" ? Number(v.duracaoMinutosEvento) : null;
+    }
+    if (categoriaEhDeAula(v.categoria)) {
+        const preco = precos.find(
+            (p) => p.categoria === v.categoria && p.modalidade === v.modalidade && p.tipoContratacao === v.tipoContratacao,
+        );
+        return preco?.duracaoPadraoMinutos ?? null;
+    }
+    return null;
 }

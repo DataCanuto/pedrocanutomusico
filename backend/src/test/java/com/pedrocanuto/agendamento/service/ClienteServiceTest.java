@@ -8,8 +8,10 @@ import com.pedrocanuto.agendamento.domain.Agendamento;
 import com.pedrocanuto.agendamento.domain.Cliente;
 import com.pedrocanuto.agendamento.domain.Matricula;
 import com.pedrocanuto.agendamento.domain.enums.ECategoriaServico;
+import com.pedrocanuto.agendamento.dto.request.ClienteRequestDTO;
 import com.pedrocanuto.agendamento.dto.response.ClienteListItemResponseDTO;
 import com.pedrocanuto.agendamento.exception.RecursoNaoEncontradoException;
+import com.pedrocanuto.agendamento.exception.RegraDeNegocioException;
 import com.pedrocanuto.agendamento.mapper.ClienteMapper;
 import com.pedrocanuto.agendamento.mapper.EnderecoMapper;
 import com.pedrocanuto.agendamento.repository.AgendamentoRepository;
@@ -107,5 +109,23 @@ class ClienteServiceTest {
         when(clienteMapper.toListItemResponseDTO(cliente, null)).thenReturn(esperado);
 
         assertThat(clienteService.listarResumido()).containsExactly(esperado);
+    }
+
+    @Test
+    void criarLancaExcecaoSemEndereco() {
+        ClienteRequestDTO dto = new ClienteRequestDTO("Maria Souza", "71999588950", null, null, null, null, null, List.of());
+
+        assertThatThrownBy(() -> clienteService.criar(dto))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("endereço");
+    }
+
+    @Test
+    void atualizarLancaExcecaoSemEndereco() {
+        ClienteRequestDTO dto = new ClienteRequestDTO("Maria Souza", "71999588950", null, null, null, null, null, null);
+
+        assertThatThrownBy(() -> clienteService.atualizar(1L, dto))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("endereço");
     }
 }

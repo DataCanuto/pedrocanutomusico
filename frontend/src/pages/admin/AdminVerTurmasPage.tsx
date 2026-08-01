@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AdminGate } from "../../components/admin/AdminGate";
 import { AcoesContato } from "../../components/admin/AcoesContato";
 import { AccordionItem } from "../../components/ui/Accordion";
+import { BotaoCopiar } from "../../components/ui/BotaoCopiar";
 import { extrairMensagemErro } from "../../services/api";
 import { listarTurmasComAlunos } from "../../services/turmaService";
 import { CATEGORIA_LABELS, DIA_SEMANA_LABELS, INSTRUMENTO_LABELS } from "../../types/labels";
@@ -32,6 +33,10 @@ function ListaDeTurmas({ adminKey }: { adminKey: string }) {
                 <div className="accordion-grupo">
                     {turmasQuery.data.map((turma) => (
                         <AccordionItem key={turma.id} className="servico-card" titulo={tituloTurma(turma)} subtitulo={subtituloTurma(turma)}>
+                            <p className="codigo-turma">
+                                Código: <strong>{turma.codigo}</strong>
+                                <BotaoCopiar valor={turma.codigo} label="Copiar código" />
+                            </p>
                             <TabelaDeAlunos turma={turma} />
                         </AccordionItem>
                     ))}

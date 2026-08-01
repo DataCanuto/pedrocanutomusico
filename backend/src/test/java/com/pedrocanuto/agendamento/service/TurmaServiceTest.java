@@ -141,6 +141,80 @@ class TurmaServiceTest {
     }
 
     @Test
+    void inscreverSemEnderecoUsaEnderecoDaTurma() {
+        Turma turma = turmaComEndereco();
+        when(turmaRepository.findByCodigo("XYZ999")).thenReturn(Optional.of(turma));
+        when(clienteService.buscarOuCriar(any())).thenReturn(new Cliente());
+        when(agendamentoService.criarInscricaoTurma(any(), any(), any(), any(), any()))
+                .thenReturn(new AgendamentoCriadoResponseDTO(1L, List.of()));
+
+        ClienteRequestDTO clienteSemEndereco =
+                new ClienteRequestDTO("Maria Souza", "71999588950", null, null, null, null, null, List.of());
+        InscricaoTurmaRequestDTO dto = new InscricaoTurmaRequestDTO(clienteSemEndereco,
+                new AlunoSelecaoRequestDTO(false, new AlunoRequestDTO("Sofia Souza", LocalDate.now().minusYears(6), null, null)),
+                ETipoContratacao.PACOTE_4, null);
+
+        turmaService.inscrever("xyz999", dto);
+
+        ArgumentCaptor<ClienteRequestDTO> captor = ArgumentCaptor.forClass(ClienteRequestDTO.class);
+        verify(clienteService).buscarOuCriar(captor.capture());
+        assertThat(captor.getValue().enderecos()).containsExactly(
+                new EnderecoRequestDTO("41700-000", "Av. Oceânica", "500", "Pituba", "Salvador", "BA", "Estúdio"));
+        // Só o endereço é preenchido - o resto do cliente passa intacto.
+        assertThat(captor.getValue().nome()).isEqualTo("Maria Souza");
+        assertThat(captor.getValue().telefone()).isEqualTo("71999588950");
+    }
+
+    @Test
+    void inscreverComEnderecoInformadoNaoSobrescreveComODaTurma() {
+        Turma turma = turmaComEndereco();
+        when(turmaRepository.findByCodigo("XYZ999")).thenReturn(Optional.of(turma));
+        when(clienteService.buscarOuCriar(any())).thenReturn(new Cliente());
+        when(agendamentoService.criarInscricaoTurma(any(), any(), any(), any(), any()))
+                .thenReturn(new AgendamentoCriadoResponseDTO(1L, List.of()));
+
+        InscricaoTurmaRequestDTO dto = inscricaoDTO();
+
+        turmaService.inscrever("xyz999", dto);
+
+        verify(clienteService).buscarOuCriar(dto.cliente());
+    }
+
+    @Test
+    void inscreverSemEnderecoETurmaSemEnderecoEstruturadoLancaExcecao() {
+        Turma turma = new Turma();
+        turma.setStatus(EStatusTurma.ATIVA);
+        when(turmaRepository.findByCodigo("XYZ999")).thenReturn(Optional.of(turma));
+
+        ClienteRequestDTO clienteSemEndereco =
+                new ClienteRequestDTO("Maria Souza", "71999588950", null, null, null, null, null, List.of());
+        InscricaoTurmaRequestDTO dto = new InscricaoTurmaRequestDTO(clienteSemEndereco,
+                new AlunoSelecaoRequestDTO(false, new AlunoRequestDTO("Sofia Souza", LocalDate.now().minusYears(6), null, null)),
+                ETipoContratacao.PACOTE_4, null);
+
+        assertThatThrownBy(() -> turmaService.inscrever("xyz999", dto))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("endereço");
+    }
+
+    private Turma turmaComEndereco() {
+        Turma turma = new Turma();
+        turma.setStatus(EStatusTurma.ATIVA);
+        turma.setCategoria(ECategoriaServico.MUSICALIZACAO_INFANTIL);
+        turma.setDiaSemana(DayOfWeek.TUESDAY);
+        turma.setHora(LocalTime.of(15, 0));
+        turma.setLocal("Estúdio Pedro Canuto");
+        turma.setEnderecoCep("41700-000");
+        turma.setEnderecoRua("Av. Oceânica");
+        turma.setEnderecoNumero("500");
+        turma.setEnderecoBairro("Pituba");
+        turma.setEnderecoCidade("Salvador");
+        turma.setEnderecoEstado("BA");
+        turma.setEnderecoComplemento("Estúdio");
+        return turma;
+    }
+
+    @Test
     void listarComAlunosAgrupaPorTurmaDedupPorAlunoEOrdenaPorDiaEHora() {
         Turma turmaQuarta = new Turma();
         turmaQuarta.setId(2L);

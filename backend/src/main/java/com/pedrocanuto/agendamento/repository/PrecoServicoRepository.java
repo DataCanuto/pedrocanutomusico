@@ -13,6 +13,9 @@ public interface PrecoServicoRepository extends JpaRepository<PrecoServico, Long
     Optional<PrecoServico> findByCategoriaAndModalidadeAndTipoContratacao(
             ECategoriaServico categoria, EModalidadeServico modalidade, ETipoContratacao tipoContratacao);
 
+    /** Qualquer pacote de uma categoria+modalidade serve para saber a duração - ela não varia por tamanho de pacote (ver PrecoServicoService#validarConsistencia). */
+    Optional<PrecoServico> findFirstByCategoriaAndModalidade(ECategoriaServico categoria, EModalidadeServico modalidade);
+
     List<PrecoServico> findAllByOrderByCategoriaAscModalidadeAsc();
 
     boolean existsByCategoriaAndModalidadeAndTipoContratacao(

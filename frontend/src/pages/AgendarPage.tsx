@@ -47,24 +47,32 @@ function dadosAlunoDoFormulario(v: AgendamentoFormValues) {
     };
 }
 
-/** Endereço é sempre exigido pelo backend - todo request que cria/atualiza um Cliente precisa de pelo menos um. */
+/**
+ * Endereço é exigido pelo backend para agendamento avulso/evento (a aula acontece na casa do
+ * cliente ou no endereço do evento). Para GRUPO é o oposto: a aula acontece sempre no endereço
+ * fixo da turma, então o formulário nem pede o do cliente (ver ClienteFields) e o backend usa o
+ * da turma automaticamente (ver TurmaService#inscrever) - por isso omitimos aqui, em vez de
+ * mandar os campos vazios que o cliente nunca preencheu.
+ */
 function clienteDoFormulario(v: AgendamentoFormValues) {
     return {
         nome: v.clienteNome,
         telefone: v.clienteTelefone,
         email: v.clienteEmail || undefined,
         dataNascimento: v.clienteDataNascimento || undefined,
-        enderecos: [
-            {
-                cep: v.clienteEnderecoCep,
-                rua: v.clienteEnderecoRua,
-                numero: v.clienteEnderecoNumero,
-                bairro: v.clienteEnderecoBairro,
-                cidade: v.clienteEnderecoCidade,
-                estado: v.clienteEnderecoEstado,
-                complemento: v.clienteEnderecoComplemento || undefined,
-            },
-        ],
+        enderecos: ehGrupoDeAula(v.categoria, v.modalidade)
+            ? []
+            : [
+                  {
+                      cep: v.clienteEnderecoCep,
+                      rua: v.clienteEnderecoRua,
+                      numero: v.clienteEnderecoNumero,
+                      bairro: v.clienteEnderecoBairro,
+                      cidade: v.clienteEnderecoCidade,
+                      estado: v.clienteEnderecoEstado,
+                      complemento: v.clienteEnderecoComplemento || undefined,
+                  },
+              ],
     };
 }
 
@@ -328,7 +336,7 @@ export function AgendarPage() {
                     )}
                     <ClienteFields />
                     {categoria === "MUSICOTERAPIA" && <AnamneseFields />}
-                    {!ehGrupo && <HorarioFields />}
+                    {!ehGrupo && <HorarioFields precos={precosQuery.data ?? []} />}
 
                     {mutation.isError && (
                         <p className="erro-campo">{extrairMensagemErro(mutation.error, "Não foi possível agendar. Tente novamente.")}</p>

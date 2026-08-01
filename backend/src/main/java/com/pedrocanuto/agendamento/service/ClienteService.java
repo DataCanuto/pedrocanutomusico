@@ -8,6 +8,7 @@ import com.pedrocanuto.agendamento.dto.request.ClienteRequestDTO;
 import com.pedrocanuto.agendamento.dto.response.ClienteListItemResponseDTO;
 import com.pedrocanuto.agendamento.dto.response.ClienteResponseDTO;
 import com.pedrocanuto.agendamento.exception.RecursoNaoEncontradoException;
+import com.pedrocanuto.agendamento.exception.RegraDeNegocioException;
 import com.pedrocanuto.agendamento.mapper.ClienteMapper;
 import com.pedrocanuto.agendamento.mapper.EnderecoMapper;
 import com.pedrocanuto.agendamento.repository.AgendamentoRepository;
@@ -63,6 +64,7 @@ public class ClienteService {
     }
 
     public ClienteResponseDTO criar(ClienteRequestDTO dto) {
+        validarEndereco(dto);
         return clienteMapper.toResponseDTO(salvarNovoCliente(dto));
     }
 
@@ -90,6 +92,7 @@ public class ClienteService {
     }
 
     public ClienteResponseDTO atualizar(Long id, ClienteRequestDTO dto) {
+        validarEndereco(dto);
         Cliente cliente = buscarEntidadePorId(id);
         cliente.setNome(dto.nome());
         cliente.setTelefone(normalizarTelefone(dto.telefone()));
@@ -126,5 +129,18 @@ public class ClienteService {
 
     private String normalizarTelefone(String telefone) {
         return telefone.replaceAll("\\D", "");
+    }
+
+    /**
+     * Cadastro/edição direta pelo admin (painel de clientes) sempre exige endereço - diferente do
+     * fluxo de matrícula em Turma, que dispensa o endereço do cliente e usa o da turma (ver
+     * TurmaService#inscrever), {@link #buscarOuCriar} não valida isso aqui: cada chamador (esta
+     * classe e AgendamentoValidator, para o fluxo direto de agendamento) já garante um endereço
+     * antes de chegar em buscarOuCriar.
+     */
+    private void validarEndereco(ClienteRequestDTO dto) {
+        if (dto.enderecos() == null || dto.enderecos().isEmpty()) {
+            throw new RegraDeNegocioException("Informe pelo menos um endereço");
+        }
     }
 }

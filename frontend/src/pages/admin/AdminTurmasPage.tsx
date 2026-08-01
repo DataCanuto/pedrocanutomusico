@@ -1,6 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { AdminGate } from "../../components/admin/AdminGate";
+import { BotaoCopiar } from "../../components/ui/BotaoCopiar";
 import { extrairMensagemErro } from "../../services/api";
 import { criarTurma } from "../../services/turmaService";
 import { gerarSlotsDeHorario } from "../../utils/horarios";
@@ -49,7 +50,10 @@ function CadastroDeTurma({ adminKey }: { adminKey: string }) {
             {mutation.isSuccess ? (
                 <div className="detalhe-pacote">
                     <p>Turma criada! Compartilhe o código abaixo com as famílias interessadas:</p>
-                    <p className="valor-estimado">{mutation.data.codigo}</p>
+                    <p className="valor-estimado codigo-turma">
+                        {mutation.data.codigo}
+                        <BotaoCopiar valor={mutation.data.codigo} label="Copiar código" />
+                    </p>
                     <button onClick={() => mutation.reset()}>Cadastrar outra turma</button>
                 </div>
             ) : (

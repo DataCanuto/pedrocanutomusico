@@ -278,6 +278,12 @@ export interface AgendamentoCriadoResponse {
     agendamentos: AgendamentoResponse[];
 }
 
+/** Só o suficiente para calcular colisão de horário no formulário público - ver GET /agendamentos/horarios-ocupados. */
+export interface HorarioOcupado {
+    hora: string;
+    duracaoMinutos: number;
+}
+
 export interface TurmaRequest {
     categoria: ECategoriaServico;
     /** Obrigatório só quando categoria = AULA_INSTRUMENTO. */

@@ -52,6 +52,19 @@ public class PrecoServicoService {
                         "Não existe pacote %s cadastrado para %s / %s.".formatted(tipoContratacao, categoria, modalidade)));
     }
 
+    /**
+     * Duração de referência de uma Turma (GRUPO) para checagem de disponibilidade - ver
+     * AgendamentoService#validarDisponibilidade e #listarHorariosOcupados. Qualquer pacote da
+     * categoria serve, já que duracaoPadraoMinutos não varia por tamanho de pacote.
+     */
+    @Transactional(readOnly = true)
+    public int buscarDuracaoDeGrupo(ECategoriaServico categoria) {
+        return precoServicoRepository.findFirstByCategoriaAndModalidade(categoria, EModalidadeServico.GRUPO)
+                .map(PrecoServico::getDuracaoPadraoMinutos)
+                .orElseThrow(() -> new RegraDeNegocioException(
+                        "Não há preço de turma (GRUPO) cadastrado para %s".formatted(categoria)));
+    }
+
     /** Usado pelo fluxo de agendamento de EVENTO: o cliente escolhe um pacote específico do catálogo, não uma modalidade fixa. */
     @Transactional(readOnly = true)
     public PrecoServico buscarPacoteDeEvento(Long precoServicoId) {
