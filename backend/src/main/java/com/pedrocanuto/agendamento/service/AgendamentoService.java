@@ -2,9 +2,11 @@ package com.pedrocanuto.agendamento.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -437,8 +439,21 @@ public class AgendamentoService {
      * nada). Em ambos os casos, um novo compromisso só pode começar depois que o anterior termina
      * + os {@link #MINUTOS_INTERVALO_ENTRE_COMPROMISSOS} minutos de intervalo (e, simetricamente,
      * só pode terminar + intervalo antes que o próximo já marcado comece) - ex.: aula de 30 min às
-     * 15h bloqueia 15h-15:59; aula de 50 min às 15h bloqueia 15h-16:29.
+     * 15h bloqueia 15h-15:44; aula de 50 min às 15h bloqueia 15h-16:04.
      */
+    /**
+     * Usado só na criação de Turma ({@code TurmaService#criar}), que não tem uma {@code data} -
+     * só um dia da semana recorrente. Reaproveita a mesma validação de disponibilidade, checando
+     * a próxima ocorrência desse dia da semana a partir de hoje. Não cobre ocorrências futuras
+     * mais distantes (ex.: um Agendamento AVULSO já marcado daqui a 3 semanas nesse mesmo dia da
+     * semana) - mesma limitação de "só a próxima ocorrência" já assumida em
+     * {@link GeradorDeDatasRecorrentes}/preview do frontend.
+     */
+    public void validarDisponibilidadeDeNovaTurma(DayOfWeek diaSemana, LocalTime hora, ECategoriaServico categoria) {
+        LocalDate proximaOcorrencia = LocalDate.now().with(TemporalAdjusters.nextOrSame(diaSemana));
+        validarDisponibilidade(proximaOcorrencia, hora, precoServicoService.buscarDuracaoDeGrupo(categoria));
+    }
+
     private void validarDisponibilidade(LocalDate data, LocalTime hora, int duracaoMinutos) {
         int inicioNovo = minutosDoDia(hora);
 

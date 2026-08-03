@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { useController, useFieldArray, useFormContext } from "react-hook-form";
+import { useController, useFieldArray, useFormContext, useWatch, type Control } from "react-hook-form";
+import { GradeDeHorarios } from "../ui/GradeDeHorarios";
 import { listarHorariosOcupados } from "../../services/agendamentoService";
 import type { EDiaSemana, ETipoContratacao, PrecoServico } from "../../types/domain";
 import { DIA_SEMANA_LABELS, QUANTIDADE_AULAS } from "../../types/labels";
 import { slotIndisponivel } from "../../utils/disponibilidade";
 import { gerarSlotsDeHorario } from "../../utils/horarios";
-import { cabeNaJanela, gerarPreviewDeDatas } from "../../utils/recorrencia";
+import { cabeNaJanela, gerarPreviewDeDatas, proximaOcorrenciaISO } from "../../utils/recorrencia";
 import { ehPacoteRecorrente, resolverDuracaoMinutos, type AgendamentoFormValues } from "./formTypes";
 
 const SLOTS = gerarSlotsDeHorario();
@@ -69,43 +70,14 @@ export function HorarioFields({ precos }: { precos: PrecoServico[] }) {
                 </p>
 
                 {fields.map((field, index) => (
-                    <div key={field.id} className="linha-recorrencia">
-                        <div>
-                            <label htmlFor={`recorrencia-dia-${index}`}>Dia da semana</label>
-                            <select
-                                id={`recorrencia-dia-${index}`}
-                                {...register(`recorrencias.${index}.diaSemana`, { required: "Selecione o dia" })}
-                            >
-                                <option value="">Selecione...</option>
-                                {DIAS_SEMANA.map((dia) => (
-                                    <option key={dia} value={dia}>
-                                        {DIA_SEMANA_LABELS[dia]}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div>
-                            <label htmlFor={`recorrencia-hora-${index}`}>Horário</label>
-                            <select
-                                id={`recorrencia-hora-${index}`}
-                                {...register(`recorrencias.${index}.hora`, { required: "Selecione o horário" })}
-                            >
-                                <option value="">Selecione...</option>
-                                {SLOTS.map((slot) => (
-                                    <option key={slot} value={slot}>
-                                        {slot}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {fields.length > 1 && (
-                            <button type="button" className="botao-secundario" onClick={() => remove(index)}>
-                                Remover dia
-                            </button>
-                        )}
-                    </div>
+                    <LinhaRecorrencia
+                        key={field.id}
+                        index={index}
+                        control={control}
+                        duracaoMinutos={duracaoMinutos}
+                        podeRemover={fields.length > 1}
+                        onRemover={() => remove(index)}
+                    />
                 ))}
                 {errors.recorrencias && <span className="erro-campo">Preencha todos os dias e horários escolhidos.</span>}
 
@@ -155,25 +127,12 @@ export function HorarioFields({ precos }: { precos: PrecoServico[] }) {
                 {data !== "" && duracaoMinutos != null && ocupadosQuery.isLoading && (
                     <p className="aviso">Carregando horários disponíveis...</p>
                 )}
-                <div className="grade-horarios">
-                    {SLOTS.map((slot) => {
-                        const bloqueado = data !== "" && duracaoMinutos != null && slotIndisponivel(slot, duracaoMinutos, ocupados);
-                        const selecionado = campoHora.value === slot;
-                        return (
-                            <button
-                                key={slot}
-                                type="button"
-                                className={`slot-horario${selecionado ? " slot-horario-selecionado" : ""}${bloqueado ? " slot-horario-bloqueado" : ""}`}
-                                disabled={bloqueado}
-                                aria-pressed={selecionado}
-                                title={bloqueado ? "Horário indisponível - já há um compromisso marcado perto desse horário" : undefined}
-                                onClick={() => campoHora.onChange(slot)}
-                            >
-                                {slot}
-                            </button>
-                        );
-                    })}
-                </div>
+                <GradeDeHorarios
+                    slots={SLOTS}
+                    valorSelecionado={campoHora.value}
+                    onSelecionar={campoHora.onChange}
+                    ehBloqueado={(slot) => data === "" || duracaoMinutos == null || slotIndisponivel(slot, duracaoMinutos, ocupados)}
+                />
                 {data === "" && <p className="aviso">Escolha a data acima para ver os horários já ocupados.</p>}
             </fieldset>
             {errors.hora && <span className="erro-campo">{errors.hora.message}</span>}
@@ -181,5 +140,84 @@ export function HorarioFields({ precos }: { precos: PrecoServico[] }) {
             <label htmlFor="observacoes">Observações (opcional)</label>
             <textarea id="observacoes" {...register("observacoes")} />
         </fieldset>
+    );
+}
+
+/**
+ * Uma recorrência (dia da semana + horário) não tem `data` própria - por isso a grade aqui usa a
+ * próxima ocorrência do dia da semana escolhido como referência de disponibilidade (mesma
+ * limitação de "só a próxima ocorrência" assumida no preview de datas geradas e na validação de
+ * Turma no backend - ver AgendamentoService#validarDisponibilidadeDeNovaTurma).
+ */
+function LinhaRecorrencia({
+    index,
+    control,
+    duracaoMinutos,
+    podeRemover,
+    onRemover,
+}: {
+    index: number;
+    control: Control<AgendamentoFormValues>;
+    duracaoMinutos: number | null;
+    podeRemover: boolean;
+    onRemover: () => void;
+}) {
+    const { register } = useFormContext<AgendamentoFormValues>();
+    const diaSemana = useWatch({ control, name: `recorrencias.${index}.diaSemana` });
+    const { field: campoHora } = useController({ control, name: `recorrencias.${index}.hora`, rules: { required: "Selecione o horário" } });
+
+    const data = diaSemana !== "" ? proximaOcorrenciaISO(diaSemana, new Date()) : "";
+    const ocupadosQuery = useQuery({
+        queryKey: ["horarios-ocupados", data],
+        queryFn: () => listarHorariosOcupados(data),
+        enabled: data !== "",
+    });
+    const ocupados = data !== "" ? (ocupadosQuery.data ?? []) : [];
+
+    // Mesma lógica da aula avulsa: se o dia da semana mudar e o horário escolhido deixar de caber
+    // na nova referência, limpa a seleção em vez de guardar um horário agora bloqueado.
+    useEffect(() => {
+        if (campoHora.value !== "" && duracaoMinutos != null && slotIndisponivel(campoHora.value, duracaoMinutos, ocupados)) {
+            campoHora.onChange("");
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [data, duracaoMinutos, ocupadosQuery.data]);
+
+    return (
+        <div className="linha-recorrencia">
+            <div>
+                <label htmlFor={`recorrencia-dia-${index}`}>Dia da semana</label>
+                <select id={`recorrencia-dia-${index}`} {...register(`recorrencias.${index}.diaSemana`, { required: "Selecione o dia" })}>
+                    <option value="">Selecione...</option>
+                    {DIAS_SEMANA.map((dia) => (
+                        <option key={dia} value={dia}>
+                            {DIA_SEMANA_LABELS[dia]}
+                        </option>
+                    ))}
+                </select>
+            </div>
+
+            <div>
+                <label>Horário</label>
+                {diaSemana === "" && <p className="aviso">Escolha o dia da semana para ver os horários disponíveis.</p>}
+                {diaSemana !== "" && duracaoMinutos != null && ocupadosQuery.isLoading && (
+                    <p className="aviso">Carregando horários disponíveis...</p>
+                )}
+                {diaSemana !== "" && (
+                    <GradeDeHorarios
+                        slots={SLOTS}
+                        valorSelecionado={campoHora.value}
+                        onSelecionar={campoHora.onChange}
+                        ehBloqueado={(slot) => duracaoMinutos == null || slotIndisponivel(slot, duracaoMinutos, ocupados)}
+                    />
+                )}
+            </div>
+
+            {podeRemover && (
+                <button type="button" className="botao-secundario" onClick={onRemover}>
+                    Remover dia
+                </button>
+            )}
+        </div>
     );
 }

@@ -453,7 +453,7 @@
 }
 
 /**
- * Compromisso já marcado dentro dos 30min de intervalo (ou durante o serviço) - ver
+ * Compromisso já marcado dentro dos 15min de intervalo (ou durante o serviço) - ver
  * slotIndisponivel. Cinza neutro fixo (não var(--bg-muted), que aqui é igual a var(--accent)) -
  * "indisponível" precisa ler como cinza/apagado independente da paleta de cores do site.
  */

@@ -1,10 +1,15 @@
-import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { AdminGate } from "../../components/admin/AdminGate";
 import { BotaoCopiar } from "../../components/ui/BotaoCopiar";
+import { GradeDeHorarios } from "../../components/ui/GradeDeHorarios";
 import { extrairMensagemErro } from "../../services/api";
+import { listarHorariosOcupados } from "../../services/agendamentoService";
+import { listarPrecos } from "../../services/precoService";
 import { criarTurma } from "../../services/turmaService";
+import { slotIndisponivel } from "../../utils/disponibilidade";
 import { gerarSlotsDeHorario } from "../../utils/horarios";
+import { proximaOcorrenciaISO } from "../../utils/recorrencia";
 import { CATEGORIA_LABELS, DIA_SEMANA_LABELS, INSTRUMENTO_LABELS } from "../../types/labels";
 import type { ECategoriaServico, EDiaSemana, EInstrumento } from "../../types/domain";
 
@@ -30,6 +35,28 @@ function CadastroDeTurma({ adminKey }: { adminKey: string }) {
     const [estado, setEstado] = useState("");
     const [complemento, setComplemento] = useState("");
     const ehInstrumento = categoria === "AULA_INSTRUMENTO";
+
+    const precosQuery = useQuery({ queryKey: ["precos"], queryFn: listarPrecos });
+    const duracaoGrupo =
+        categoria !== "" ? (precosQuery.data?.find((p) => p.categoria === categoria && p.modalidade === "GRUPO")?.duracaoPadraoMinutos ?? null) : null;
+
+    // Turma não tem uma data própria (é recorrente por dia da semana) - a grade usa a próxima
+    // ocorrência do dia escolhido como referência de disponibilidade, mesma lógica do backend em
+    // AgendamentoService#validarDisponibilidadeDeNovaTurma (que é quem valida de verdade).
+    const dataDeReferencia = diaSemana !== "" ? proximaOcorrenciaISO(diaSemana, new Date()) : "";
+    const ocupadosQuery = useQuery({
+        queryKey: ["horarios-ocupados", dataDeReferencia],
+        queryFn: () => listarHorariosOcupados(dataDeReferencia),
+        enabled: dataDeReferencia !== "",
+    });
+    const ocupados = dataDeReferencia !== "" ? (ocupadosQuery.data ?? []) : [];
+
+    useEffect(() => {
+        if (hora !== "" && duracaoGrupo != null && slotIndisponivel(hora, duracaoGrupo, ocupados)) {
+            setHora("");
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [dataDeReferencia, duracaoGrupo, ocupadosQuery.data]);
 
     const mutation = useMutation({
         mutationFn: () =>
@@ -109,16 +136,18 @@ function CadastroDeTurma({ adminKey }: { adminKey: string }) {
                             todas as aulas do pacote escolhido, geradas dentro de 31 dias corridos a partir da inscrição.
                         </p>
 
-                        <label htmlFor="hora">Horário</label>
-                        <select id="hora" value={hora} onChange={(e) => setHora(e.target.value)} required>
-                            <option value="">Selecione...</option>
-                            {SLOTS.map((slot) => (
-                                <option key={slot} value={slot}>
-                                    {slot}
-                                </option>
-                            ))}
-                        </select>
-
+                        <label>Horário</label>
+                        {diaSemana === "" && <p className="aviso">Escolha o dia da semana acima para ver os horários disponíveis.</p>}
+                        {diaSemana !== "" && categoria === "" && <p className="aviso">Escolha o serviço acima para ver os horários disponíveis.</p>}
+                        {diaSemana !== "" && categoria !== "" && ocupadosQuery.isLoading && <p className="aviso">Carregando horários disponíveis...</p>}
+                        {diaSemana !== "" && categoria !== "" && (
+                            <GradeDeHorarios
+                                slots={SLOTS}
+                                valorSelecionado={hora}
+                                onSelecionar={setHora}
+                                ehBloqueado={(slot) => duracaoGrupo == null || slotIndisponivel(slot, duracaoGrupo, ocupados)}
+                            />
+                        )}
                     </fieldset>
 
                     <fieldset className="form-section">
@@ -155,7 +184,8 @@ function CadastroDeTurma({ adminKey }: { adminKey: string }) {
                         <p className="erro-campo">{extrairMensagemErro(mutation.error, "Não foi possível criar a turma.")}</p>
                     )}
 
-                    <button type="submit" disabled={mutation.isPending}>
+                    {hora === "" && <p className="aviso">Selecione um horário na grade acima para poder criar a turma.</p>}
+                    <button type="submit" disabled={mutation.isPending || hora === ""}>
                         {mutation.isPending ? "Criando..." : "Criar turma"}
                     </button>
                 </form>

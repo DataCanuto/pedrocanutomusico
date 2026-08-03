@@ -24,6 +24,21 @@ function proximaOcorrencia(diaSemana: EDiaSemana, aPartirDe: Date): Date {
 }
 
 /**
+ * Data (YYYY-MM-DD) da próxima ocorrência de um dia da semana a partir de hoje (inclusive) - usada
+ * para consultar `GET /agendamentos/horarios-ocupados` como referência de disponibilidade de um
+ * compromisso recorrente (recorrência de pacote, ou Turma) que não tem uma data própria, só o dia
+ * da semana. Não cobre ocorrências mais distantes - mesma limitação assumida no preview de datas
+ * geradas (ver {@link gerarPreviewDeDatas}).
+ */
+export function proximaOcorrenciaISO(diaSemana: EDiaSemana, hoje: Date): string {
+    const data = proximaOcorrencia(diaSemana, hoje);
+    const ano = data.getFullYear();
+    const mes = String(data.getMonth() + 1).padStart(2, "0");
+    const dia = String(data.getDate()).padStart(2, "0");
+    return `${ano}-${mes}-${dia}`;
+}
+
+/**
  * Espelha o algoritmo de GeradorDeDatasRecorrentes (backend) só para dar um preview ao cliente
  * antes de enviar - o servidor sempre recalcula e revalida, este resultado nunca é enviado como
  * dado bruto.

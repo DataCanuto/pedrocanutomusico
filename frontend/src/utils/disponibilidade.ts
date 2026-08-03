@@ -1,7 +1,7 @@
 import type { HorarioOcupado } from "../types/domain";
 
 /** Mesmo intervalo mínimo do backend entre o fim de um compromisso e o início do próximo - ver AgendamentoService#MINUTOS_INTERVALO_ENTRE_COMPROMISSOS. Duplicado aqui (não há endpoint de config) só para a pré-visualização no formulário; quem valida de verdade continua sendo o backend ao criar o agendamento. */
-const MINUTOS_INTERVALO_ENTRE_COMPROMISSOS = 30;
+const MINUTOS_INTERVALO_ENTRE_COMPROMISSOS = 15;
 
 function minutosDoDia(hora: string): number {
     const [horas, minutos] = hora.split(":").map(Number);

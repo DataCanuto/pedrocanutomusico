@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -103,6 +105,37 @@ class TurmaServiceTest {
         assertThatThrownBy(() -> turmaService.criar(dto))
                 .isInstanceOf(RegraDeNegocioException.class)
                 .hasMessageContaining("instrumento");
+    }
+
+    /**
+     * TurmaService não tem @{code data} própria (turma é recorrente por dia da semana) - por isso
+     * delega a checagem de conflito para {@link AgendamentoService#validarDisponibilidadeDeNovaTurma},
+     * que resolve a próxima ocorrência desse dia da semana internamente.
+     */
+    @Test
+    void criarValidaDisponibilidadeContraProximaOcorrenciaDoDiaDaSemana() {
+        when(turmaRepository.existsByCodigo(any())).thenReturn(false);
+        when(turmaMapper.toEntity(any())).thenReturn(new Turma());
+        when(turmaRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        TurmaRequestDTO dto = new TurmaRequestDTO(ECategoriaServico.MUSICALIZACAO_INFANTIL, null, DayOfWeek.TUESDAY, LocalTime.of(10, 0), enderecoDTO());
+        turmaService.criar(dto);
+
+        verify(agendamentoService).validarDisponibilidadeDeNovaTurma(DayOfWeek.TUESDAY, LocalTime.of(10, 0), ECategoriaServico.MUSICALIZACAO_INFANTIL);
+    }
+
+    @Test
+    void criarPropagaExcecaoQuandoHorarioColideComCompromissoExistente() {
+        doThrow(new RegraDeNegocioException("Horário indisponível - já existe um compromisso agendado que não deixa os 15 minutos de intervalo necessários antes/depois"))
+                .when(agendamentoService).validarDisponibilidadeDeNovaTurma(any(), any(), any());
+
+        TurmaRequestDTO dto = new TurmaRequestDTO(ECategoriaServico.MUSICALIZACAO_INFANTIL, null, DayOfWeek.TUESDAY, LocalTime.of(10, 0), enderecoDTO());
+
+        assertThatThrownBy(() -> turmaService.criar(dto))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("intervalo");
+
+        verify(turmaRepository, never()).save(any());
     }
 
     @Test

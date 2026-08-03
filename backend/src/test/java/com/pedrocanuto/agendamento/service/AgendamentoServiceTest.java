@@ -222,9 +222,9 @@ class AgendamentoServiceTest {
     }
 
     /**
-     * Regra de negócio fundamental: um compromisso de duração D às H bloqueia até H+D+30min: aula
-     * de 30min às 15h bloqueia 15h-15:59 (16h livre); aula de 50min às 15h bloqueia 15h-16:29
-     * (16:30 livre). Os 4 testes abaixo cobrem exatamente esses dois exemplos, nos dois lados do
+     * Regra de negócio fundamental: um compromisso de duração D às H bloqueia até H+D+15min: aula
+     * de 30min às 15h bloqueia 15h-15:44 (15:45 livre); aula de 50min às 15h bloqueia 15h-16:04
+     * (16:05 livre). Os 4 testes abaixo cobrem exatamente esses dois exemplos, nos dois lados do
      * limite (bloqueado vs. liberado).
      */
     @Test
@@ -232,7 +232,7 @@ class AgendamentoServiceTest {
         when(precoServicoService.buscarPorCategoriaModalidadeEPacote(any(), any(), any())).thenReturn(precoMusicalizacaoIndividualAvulso());
         when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of(agendamentoExistente(LocalTime.of(15, 0), 30)));
 
-        assertThatThrownBy(() -> agendamentoService.criar(aulaRequestDTOComHorario(LocalTime.of(15, 45))))
+        assertThatThrownBy(() -> agendamentoService.criar(aulaRequestDTOComHorario(LocalTime.of(15, 30))))
                 .isInstanceOf(RegraDeNegocioException.class)
                 .hasMessageContaining("intervalo");
 
@@ -241,11 +241,11 @@ class AgendamentoServiceTest {
     }
 
     @Test
-    void criarPermiteHorarioExatamenteTrintaMinutosAposAulaDeTrintaMinutos() {
+    void criarPermiteHorarioExatamenteQuinzeMinutosAposAulaDeTrintaMinutos() {
         stubsParaCriarAulaComSucesso();
         when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of(agendamentoExistente(LocalTime.of(15, 0), 30)));
 
-        agendamentoService.criar(aulaRequestDTOComHorario(LocalTime.of(16, 0)));
+        agendamentoService.criar(aulaRequestDTOComHorario(LocalTime.of(15, 45)));
 
         verify(agendamentoRepository).save(any());
     }
@@ -255,7 +255,7 @@ class AgendamentoServiceTest {
         when(precoServicoService.buscarPorCategoriaModalidadeEPacote(any(), any(), any())).thenReturn(precoMusicalizacaoIndividualAvulso());
         when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of(agendamentoExistente(LocalTime.of(15, 0), 50)));
 
-        assertThatThrownBy(() -> agendamentoService.criar(aulaRequestDTOComHorario(LocalTime.of(16, 15))))
+        assertThatThrownBy(() -> agendamentoService.criar(aulaRequestDTOComHorario(LocalTime.of(16, 0))))
                 .isInstanceOf(RegraDeNegocioException.class)
                 .hasMessageContaining("intervalo");
 
@@ -263,11 +263,13 @@ class AgendamentoServiceTest {
     }
 
     @Test
-    void criarPermiteHorarioExatamenteTrintaMinutosAposAulaDeCinquentaMinutos() {
+    void criarPermiteHorarioExatamenteQuinzeMinutosAposAulaDeCinquentaMinutos() {
         stubsParaCriarAulaComSucesso();
         when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of(agendamentoExistente(LocalTime.of(15, 0), 50)));
 
-        agendamentoService.criar(aulaRequestDTOComHorario(LocalTime.of(16, 30)));
+        // O limite exato (15:00+50+15=16:05) não cai na grade de 15 em 15 min - 16:15 é o próximo
+        // horário válido, já livre.
+        agendamentoService.criar(aulaRequestDTOComHorario(LocalTime.of(16, 15)));
 
         verify(agendamentoRepository).save(any());
     }
