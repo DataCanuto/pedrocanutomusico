@@ -1,5 +1,17 @@
 package com.pedrocanuto.agendamento.service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.pedrocanuto.agendamento.domain.Agendamento;
 import com.pedrocanuto.agendamento.domain.Aluno;
 import com.pedrocanuto.agendamento.domain.Cliente;
@@ -27,16 +39,6 @@ import com.pedrocanuto.agendamento.mapper.EnderecoFormatter;
 import com.pedrocanuto.agendamento.repository.AgendamentoRepository;
 import com.pedrocanuto.agendamento.repository.TurmaRepository;
 import com.pedrocanuto.agendamento.service.validation.AgendamentoValidator;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Orquestra a criação e o ciclo de vida de um Agendamento. As transições de status são métodos
@@ -52,7 +54,7 @@ public class AgendamentoService {
      * Intervalo mínimo obrigatório entre o fim de um compromisso (aula/evento) e o início do
      * próximo, para o professor ter tempo de transição - ver {@link #validarDisponibilidade}.
      */
-    private static final int MINUTOS_INTERVALO_ENTRE_COMPROMISSOS = 30;
+    private static final int MINUTOS_INTERVALO_ENTRE_COMPROMISSOS = 29;
 
     private final AgendamentoRepository agendamentoRepository;
     private final TurmaRepository turmaRepository;
