@@ -1,5 +1,12 @@
 import { api } from "./api";
-import type { AgendamentoCriadoResponse, InscricaoTurmaRequest, Turma, TurmaComAlunos, TurmaRequest } from "../types/domain";
+import type {
+    AgendamentoCriadoResponse,
+    EnderecoRequest,
+    InscricaoTurmaRequest,
+    Turma,
+    TurmaComAlunos,
+    TurmaRequest,
+} from "../types/domain";
 
 export async function buscarTurmaPorCodigo(codigo: string): Promise<Turma> {
     const { data } = await api.get<Turma>(`/turmas/${codigo}`);
@@ -21,6 +28,14 @@ export async function criarTurma(dto: TurmaRequest, adminKey: string): Promise<T
 
 export async function listarTurmasComAlunos(adminKey: string): Promise<TurmaComAlunos[]> {
     const { data } = await api.get<TurmaComAlunos[]>("/admin/turmas", {
+        headers: { "X-Admin-Key": adminKey },
+    });
+    return data;
+}
+
+/** Completa/corrige o endereço estruturado de uma turma já existente (ver AdminVerTurmasPage). */
+export async function atualizarEnderecoTurma(id: number, dto: EnderecoRequest, adminKey: string): Promise<Turma> {
+    const { data } = await api.patch<Turma>(`/admin/turmas/${id}/endereco`, dto, {
         headers: { "X-Admin-Key": adminKey },
     });
     return data;

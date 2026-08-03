@@ -86,6 +86,27 @@ public class TurmaService {
     }
 
     /**
+     * Completa/corrige o endereço estruturado de uma turma já existente - necessário para turmas
+     * criadas antes da migration V5 (endereço estruturado), que ficaram só com {@link Turma#getLocal()}
+     * preenchido e travam a matrícula em {@link #comEnderecoDaTurmaSeAusente} (ver
+     * RegraDeNegocioException ali). Também serve para o professor corrigir um endereço já
+     * estruturado que tenha sido cadastrado errado.
+     */
+    public TurmaResponseDTO atualizarEndereco(Long id, EnderecoRequestDTO dto) {
+        Turma turma = turmaRepository.findById(id)
+                .orElseThrow(() -> RecursoNaoEncontradoException.paraId("Turma", id));
+        turma.setEnderecoCep(dto.cep());
+        turma.setEnderecoRua(dto.rua());
+        turma.setEnderecoNumero(dto.numero());
+        turma.setEnderecoBairro(dto.bairro());
+        turma.setEnderecoCidade(dto.cidade());
+        turma.setEnderecoEstado(dto.estado());
+        turma.setEnderecoComplemento(dto.complemento());
+        turma.setLocal(EnderecoFormatter.resumo(dto));
+        return turmaMapper.toResponseDTO(turmaRepository.save(turma));
+    }
+
+    /**
      * Painel "ver turmas" (Q_verTurmas): cada turma com os alunos matriculados nela. Turma não
      * tem ligação direta com Cliente/Aluno - o vínculo existe só via Agendamento#turma, e como
      * cada pacote gera uma aula por semana (vários Agendamentos por matrícula), o mesmo aluno
@@ -124,6 +145,7 @@ public class TurmaService {
                 turma.getDiaSemana(),
                 turma.getHora(),
                 turma.getLocal(),
+                turmaMapper.paraEnderecoDTO(turma),
                 turma.getStatus(),
                 alunos.stream().map(this::paraAlunoDaTurma).toList()
         );

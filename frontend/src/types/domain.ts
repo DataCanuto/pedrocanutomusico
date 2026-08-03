@@ -333,6 +333,8 @@ export interface TurmaComAlunos {
     diaSemana: EDiaSemana;
     hora: string;
     local: string;
+    /** Nulo só para turmas criadas antes do endereço estruturado existir - ver AdminVerTurmasPage. */
+    endereco: EnderecoRequest | null;
     status: EStatusTurma;
     alunos: AlunoDaTurma[];
 }
