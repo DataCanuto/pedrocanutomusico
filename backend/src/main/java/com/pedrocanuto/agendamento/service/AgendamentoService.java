@@ -54,7 +54,7 @@ public class AgendamentoService {
      * Intervalo mínimo obrigatório entre o fim de um compromisso (aula/evento) e o início do
      * próximo, para o professor ter tempo de transição - ver {@link #validarDisponibilidade}.
      */
-    private static final int MINUTOS_INTERVALO_ENTRE_COMPROMISSOS = 29;
+    private static final int MINUTOS_INTERVALO_ENTRE_COMPROMISSOS = 15;
 
     private final AgendamentoRepository agendamentoRepository;
     private final TurmaRepository turmaRepository;
