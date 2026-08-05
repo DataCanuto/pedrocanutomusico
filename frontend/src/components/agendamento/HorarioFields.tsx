@@ -30,7 +30,15 @@ export function HorarioFields({ precos }: { precos: PrecoServico[] }) {
     const data = watch("data");
     const recorrencias = watch("recorrencias");
     const { fields, append, remove } = useFieldArray({ control, name: "recorrencias" });
-    const { field: campoHora } = useController({ control, name: "hora", rules: { required: "Selecione o horário" } });
+    // required só se aplica no fluxo avulso - este campo nem aparece na tela quando o pacote é
+    // recorrente (ver branch abaixo, que usa recorrencias.N.hora em vez de "hora"), então não pode
+    // ser um required incondicional: isso travava o envio de qualquer PACOTE_4/PACOTE_12 (campo
+    // "hora" nunca preenchido, sem nenhum jeito de preenchê-lo na tela).
+    const { field: campoHora } = useController({
+        control,
+        name: "hora",
+        rules: { validate: (valor) => ehPacoteRecorrente(categoria, tipoContratacao) || valor !== "" || "Selecione o horário" },
+    });
 
     const duracaoMinutos = resolverDuracaoMinutos(
         { categoria, modalidade, tipoContratacao, eventoPrecoServicoId, duracaoMinutosEvento },

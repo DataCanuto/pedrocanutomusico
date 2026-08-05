@@ -49,8 +49,9 @@ export function HomePage() {
                             </p>
                             <ul>
                                 <li>Escola de Música Canela Fina (2016–2019)</li>
-                                <li>Escola Dorilândia (2018)</li>
+                                <li>Escola Dorilândia - musicalização em inglês (2018)</li>
                                 <li>Escola Pernalonga (2018–2020)</li>
+                                <li>Escola Red Balloon - musicalização em inglês </li>
                                 <li>OCA – Infância Viva na Natureza (2018–2023)</li>
                                 <li>Escola Cresça e Apareça (2020–2022)</li>
                                 <li>Colégio Miró (2021–2024)</li>
@@ -70,8 +71,7 @@ export function HomePage() {
 
                         <AccordionItem titulo="Missão e filosofia de trabalho">
                             <p>
-                                <strong>Missão:</strong> Transformar cada encontro musical em desenvolvimento, cuidado e conexão humana - para
-                                crianças, famílias, escolas e empresas em Salvador e região.
+                                <strong>Missão:</strong> Transformar cada encontro musical em desenvolvimento, cuidado e conexão humana.
                             </p>
                             <p>
                                 <strong>Filosofia:</strong> A música não pertence só aos palcos - pertence à família, à escola, à infância e à

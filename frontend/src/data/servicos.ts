@@ -56,11 +56,10 @@ export const SERVICOS: Servico[] = [
                 tipo: "lista",
                 titulo: "Pode contribuir em situações como:",
                 itens: [
-                    "atrasos no desenvolvimento",
-                    "Transtorno do Espectro Autista (TEA) e TDAH",
-                    "ansiedade e dificuldades emocionais",
-                    "fortalecimento de vínculos familiares",
-                    "reabilitação e promoção de qualidade de vida",
+                    "Atrasos no desenvolvimento",
+                    "Transtorno do Espectro Autista (TEA), TDAH",
+                    "Ansiedade e dificuldades emocionais",
+                    "Reabilitação e promoção de qualidade de vida"
                 ],
             },
             { tipo: "paragrafo", texto: "Cada processo é único. A escuta é sempre o ponto de partida." },
@@ -70,7 +69,7 @@ export const SERVICOS: Servico[] = [
         slug: "aulas-de-instrumento",
         titulo: "Aulas de Instrumento",
         icone: "🎸",
-        resumo: "Violão, ukulele, cavaquinho, bandolim, contrabaixo, cajón e pandeiro - aulas individuais para iniciantes e avançados.",
+        resumo: "Violão, ukulele, cavaquinho, bandolim, contrabaixo, guitarra, cajón, pandeiro, djembê, atabaque - aulas individuais para iniciantes e avançados.",
         blocos: [
             {
                 tipo: "paragrafo",
@@ -79,7 +78,7 @@ export const SERVICOS: Servico[] = [
             {
                 tipo: "lista",
                 titulo: "Instrumentos disponíveis",
-                itens: ["Violão", "Ukulele", "Cavaquinho", "Bandolim", "Contrabaixo", "Cajón", "Pandeiro"],
+                itens: ["Violão", "Ukulele", "Cavaquinho", "Bandolim", "Contrabaixo", "Guitarra", "Cajón", "Pandeiro","Djembê","Atabaque"],
             },
             { tipo: "paragrafo", texto: "O repertório é construído junto com o estudante, tornando o aprendizado mais prazeroso e significativo." },
         ],
@@ -119,7 +118,7 @@ export const SERVICOS: Servico[] = [
             {
                 tipo: "lista",
                 titulo: "Apresentações especiais",
-                itens: ["Carnaval e São João", "Natal, princesas e super-heróis", "Capoeira e folclore brasileiro", "musicalização para bebês"],
+                itens: ["Carnaval e São João", "Natal, princesas e super-heróis", "Capoeira e folclore brasileiro", "musicalização ao vivo para bebês"],
             },
         ],
     },
@@ -153,15 +152,19 @@ export const SERVICOS: Servico[] = [
         ],
     },
     {
-        slug: "producao-musical",
-        titulo: "Produção Musical",
-        icone: "🎹",
-        resumo: "Canções autorais, arranjos e trilhas sonoras para escolas, espetáculos e conteúdo infantil.",
-        blocos: [
+        slug: "roda-tambores",
+        titulo: "Roda de Tambores",
+        icone: "",
+        resumo: "A Roda de Tambores é uma experiência coletiva que utiliza a percussão como instrumento de integração, expressão, criatividade e desenvolvimento humano.",
+        blocos: [            
             {
                 tipo: "paragrafo",
-                texto: "Toda boa ideia merece uma boa trilha sonora. Produzimos canções autorais, arranjos e trilhas para escolas, projetos culturais, espetáculos, eventos e conteúdo infantil - cada composição nasce para comunicar uma história.",
+                texto: "Meu Trabalho de Conclusão de Curso em Musicoterapia teve como tema a utilização da Roda de Tambores como <em>setting</em> musicoterapêutico, investigando seu potencial para favorecer processos de comunicação, vínculo, escuta, cooperação e bem-estar em diferentes contextos.",
             },
+            {
+                tipo:"paragrafo",
+                texto:"Minha relação com a capoeira. Movido pela curiosidade, aprofundei minha formação em ritmos afro-brasileiros por meio de aulas de percussão em Salvador. Ao longo desse percurso, estudei os fundamentos de diversos instrumentos e passei a realizar oficinas em grupos terapeuticos e aulas em estúdio."
+            }
         ],
     },
 ];
