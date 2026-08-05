@@ -4,9 +4,11 @@ import com.pedrocanuto.agendamento.domain.Aluno;
 import com.pedrocanuto.agendamento.domain.Anamnese;
 import com.pedrocanuto.agendamento.dto.request.AnamneseMusicoterapiaRequestDTO;
 import com.pedrocanuto.agendamento.dto.response.AnamneseMusicoterapiaResponseDTO;
+import com.pedrocanuto.agendamento.dto.response.PacienteMusicoterapiaResponseDTO;
 import com.pedrocanuto.agendamento.exception.RecursoNaoEncontradoException;
 import com.pedrocanuto.agendamento.mapper.AnamneseMapper;
 import com.pedrocanuto.agendamento.repository.AnamneseRepository;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,5 +44,11 @@ public class AnamneseService {
         Anamnese anamnese = anamneseRepository.findByAlunoId(alunoId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Aluno ainda não tem anamnese registrada"));
         return anamneseMapper.toResponseDTO(anamnese);
+    }
+
+    /** Painel "pacientes de musicoterapia" (Q_verAnamneses) - todo aluno com anamnese é, por definição, um paciente de musicoterapia (ver criarSeAusente). */
+    @Transactional(readOnly = true)
+    public List<PacienteMusicoterapiaResponseDTO> listarPacientes() {
+        return anamneseRepository.listarComAlunoEResponsavel().stream().map(anamneseMapper::toPacienteDTO).toList();
     }
 }

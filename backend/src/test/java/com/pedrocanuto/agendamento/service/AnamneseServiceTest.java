@@ -11,9 +11,11 @@ import com.pedrocanuto.agendamento.domain.Aluno;
 import com.pedrocanuto.agendamento.domain.Anamnese;
 import com.pedrocanuto.agendamento.dto.request.AnamneseMusicoterapiaRequestDTO;
 import com.pedrocanuto.agendamento.dto.response.AnamneseMusicoterapiaResponseDTO;
+import com.pedrocanuto.agendamento.dto.response.PacienteMusicoterapiaResponseDTO;
 import com.pedrocanuto.agendamento.exception.RecursoNaoEncontradoException;
 import com.pedrocanuto.agendamento.mapper.AnamneseMapper;
 import com.pedrocanuto.agendamento.repository.AnamneseRepository;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -90,6 +92,19 @@ class AnamneseServiceTest {
         AnamneseMusicoterapiaResponseDTO resultado = anamneseService.buscarPorAluno(4L);
 
         assertThat(resultado.idade()).isEqualTo(30);
+    }
+
+    @Test
+    void listarPacientesMapeiaCadaAnamneseParaPacienteDTO() {
+        Anamnese entidade = new Anamnese();
+        PacienteMusicoterapiaResponseDTO pacienteDTO =
+                new PacienteMusicoterapiaResponseDTO(4L, "Sofia Souza", 8, "Maria Souza", "71999588950", null);
+        when(anamneseRepository.listarComAlunoEResponsavel()).thenReturn(List.of(entidade));
+        when(anamneseMapper.toPacienteDTO(entidade)).thenReturn(pacienteDTO);
+
+        List<PacienteMusicoterapiaResponseDTO> resultado = anamneseService.listarPacientes();
+
+        assertThat(resultado).containsExactly(pacienteDTO);
     }
 
     private AnamneseMusicoterapiaRequestDTO anamneseDTO() {

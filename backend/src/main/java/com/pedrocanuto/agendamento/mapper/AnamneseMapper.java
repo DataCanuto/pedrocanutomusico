@@ -16,6 +16,7 @@ import com.pedrocanuto.agendamento.dto.response.AnamneseInfantilResponseDTO;
 import com.pedrocanuto.agendamento.dto.response.AnamneseMusicoterapiaResponseDTO;
 import com.pedrocanuto.agendamento.dto.response.HistoricoClinicoResponseDTO;
 import com.pedrocanuto.agendamento.dto.response.HistoricoMusicalResponseDTO;
+import com.pedrocanuto.agendamento.dto.response.PacienteMusicoterapiaResponseDTO;
 import com.pedrocanuto.agendamento.dto.response.PerfilDesenvolvimentoResponseDTO;
 import com.pedrocanuto.agendamento.dto.response.ResponsavelResponseDTO;
 import org.mapstruct.Mapper;
@@ -47,6 +48,14 @@ public interface AnamneseMapper {
 
     @Mapping(target = "alunoId", source = "aluno.id")
     AnamneseMusicoterapiaResponseDTO toResponseDTO(Anamnese entity);
+
+    @Mapping(target = "alunoId", source = "aluno.id")
+    @Mapping(target = "nomeAluno", source = "aluno.nome")
+    @Mapping(target = "idadeAtual", expression = "java(entity.getAluno().getIdade())")
+    @Mapping(target = "nomeResponsavel", source = "aluno.responsavel.nome")
+    @Mapping(target = "telefoneResponsavel", source = "aluno.responsavel.telefone")
+    @Mapping(target = "anamnese", expression = "java(toResponseDTO(entity))")
+    PacienteMusicoterapiaResponseDTO toPacienteDTO(Anamnese entity);
 
     HistoricoClinicoResponseDTO toResponseDTO(HistoricoClinico entity);
 

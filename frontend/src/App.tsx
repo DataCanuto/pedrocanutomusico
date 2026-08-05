@@ -9,6 +9,7 @@ import { AdminMusicosPage } from "./pages/admin/AdminMusicosPage";
 import { AdminNovoEventoPage } from "./pages/admin/AdminNovoEventoPage";
 import { AdminPrecosPage } from "./pages/admin/AdminPrecosPage";
 import { AdminTurmasPage } from "./pages/admin/AdminTurmasPage";
+import { AdminVerAnamnesesPage } from "./pages/admin/AdminVerAnamnesesPage";
 import { AdminVerTurmasPage } from "./pages/admin/AdminVerTurmasPage";
 import { AgendarPage } from "./pages/AgendarPage";
 import { HomePage } from "./pages/HomePage";
@@ -45,6 +46,7 @@ function App() {
                     <Route path="/admin/musicos" element={<AdminMusicosPage />} />
                     <Route path="/admin/agenda" element={<AdminAgendaPage />} />
                     <Route path="/admin/clientes" element={<AdminClientesPage />} />
+                    <Route path="/admin/anamneses" element={<AdminVerAnamnesesPage />} />
                 </Routes>
             </main>
         </>

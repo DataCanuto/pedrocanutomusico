@@ -215,6 +215,99 @@ export interface AnamneseMusicoterapiaRequest {
     anamneseInfantil?: AnamneseInfantilRequest | null;
 }
 
+export interface HistoricoClinicoResponse {
+    possuiDiagnostico: boolean | null;
+    diagnosticos: string | null;
+    fazUsoMedicamentos: boolean | null;
+    medicamentos: string | null;
+    possuiAcompanhamentoMedico: boolean | null;
+    especialidadesMedicas: string | null;
+    possuiAcompanhamentoPsicologico: boolean | null;
+    observacoesAcompanhamentoPsicologico: string | null;
+    possuiAlergias: boolean | null;
+    alergias: string | null;
+}
+
+export interface PerfilDesenvolvimentoResponse {
+    desenvolvimento: string | null;
+    aspectosEmocionais: string | null;
+    aspectosCognitivos: string | null;
+    aspectosMotores: string | null;
+    comunicacao: string | null;
+    socializacao: string | null;
+    rotina: string | null;
+    sono: string | null;
+    alimentacao: string | null;
+}
+
+export interface HistoricoMusicalResponse {
+    possuiExperienciaMusical: boolean | null;
+    descricaoExperienciaMusical: string | null;
+    instrumentosPreferidos: string | null;
+    estilosMusicaisPreferidos: string | null;
+    musicasSignificativas: string | null;
+    possuiHipersensibilidadeSonora: boolean | null;
+    observacoesAuditivas: string | null;
+}
+
+export interface ResponsavelAnamneseResponse {
+    nome: string | null;
+    parentesco: string | null;
+    telefone: string | null;
+    email: string | null;
+}
+
+/** Nulo campo a campo quando o paciente não é criança. */
+export interface AnamneseInfantilResponse {
+    gestacao: string | null;
+    parto: string | null;
+    desenvolvimentoMotor: string | null;
+    desenvolvimentoLinguagem: string | null;
+    desenvolvimentoSocial: string | null;
+    desenvolvimentoEscolar: string | null;
+    comportamentoCasa: string | null;
+    comportamentoEscola: string | null;
+    seletividadeAlimentar: string | null;
+    desfraldeConcluido: boolean | null;
+    usaFraldas: boolean | null;
+    interessesCrianca: string | null;
+    brincadeirasFavoritas: string | null;
+}
+
+export interface AnamneseMusicoterapiaResponse {
+    id: number;
+    alunoId: number;
+    idade: number | null;
+    profissao: string | null;
+    escolaridade: string | null;
+    estadoCivil: string | null;
+    motivoEncaminhamento: string | null;
+    queixaPrincipal: string | null;
+    objetivosPaciente: string | null;
+    historicoClinico: HistoricoClinicoResponse | null;
+    perfilDesenvolvimento: PerfilDesenvolvimentoResponse | null;
+    historicoMusical: HistoricoMusicalResponse | null;
+    objetivosMusicoterapeuticos: string | null;
+    observacoesGerais: string | null;
+    responsavel: ResponsavelAnamneseResponse | null;
+    anamneseInfantil: AnamneseInfantilResponse | null;
+    criadaEm: string;
+}
+
+/**
+ * Um paciente de Musicoterapia (aluno com anamnese registrada) - ver AdminVerAnamnesesPage.
+ * nomeAluno/idadeAtual/nomeResponsavel/telefoneResponsavel vêm do cadastro (sempre confiáveis),
+ * diferente de anamnese.responsavel (preenchido na entrevista, pode divergir ou estar vazio).
+ */
+export interface PacienteMusicoterapia {
+    alunoId: number;
+    nomeAluno: string;
+    idadeAtual: number;
+    nomeResponsavel: string;
+    telefoneResponsavel: string;
+    anamnese: AnamneseMusicoterapiaResponse;
+}
+
 export interface HorarioRecorrenteRequest {
     diaSemana: EDiaSemana;
     hora: string;
