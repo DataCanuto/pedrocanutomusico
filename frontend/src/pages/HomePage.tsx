@@ -19,6 +19,7 @@ export function HomePage() {
                     <div className="hero-conteudo">
                         <h3 className="hero-eyebrow">Aulas de música e musicoterapia em Salvador, para todas as idades</h3>
                         <h1>Música que educa, acolhe e transforma.</h1>
+                        <h2>Atendimentos em domicílio.</h2>
                         <p className="hero-lead">
                             Sou <strong>Pedro Canuto</strong>, músico, educador musical e musicoterapeuta. Há quase uma década crio experiências
                             musicais para crianças, famílias, escolas, empresas e eventos - sempre com o mesmo propósito:{" "}
