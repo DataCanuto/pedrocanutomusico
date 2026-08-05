@@ -4,6 +4,7 @@ import type {
     EInstrumento,
     EModalidadeServico,
     EStatusAgendamento,
+    EStatusMatricula,
     ETipoContratacao,
     ETipoEvento,
 } from "./domain";
@@ -75,6 +76,12 @@ export const STATUS_AGENDAMENTO_LABELS: Record<EStatusAgendamento, string> = {
     FINALIZADO: "Finalizado",
     CANCELADO: "Cancelado",
     FALTOU: "Faltou",
+};
+
+/** ATIVA/CANCELADA de uma Matricula de Turma - ver AlunoDaTurma. */
+export const STATUS_MATRICULA_LABELS: Record<EStatusMatricula, string> = {
+    ATIVA: "Ativo",
+    CANCELADA: "Inativo",
 };
 
 export function formatarMoeda(valor: number): string {

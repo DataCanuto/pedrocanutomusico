@@ -42,6 +42,12 @@ export type EStatusAgendamento =
 
 export type EStatusTurma = "ATIVA" | "ENCERRADA" | "CANCELADA";
 
+/** ATIVA/CANCELADA de uma Matricula de Turma representa ativo/inativo na turma - ver AlunoDaTurma. */
+export type EStatusMatricula = "ATIVA" | "CANCELADA";
+
+/** Discrimina as duas formas de compromisso que aparecem juntas na agenda do professor - ver CompromissoResponse. */
+export type ECompromissoTipo = "AGENDAMENTO" | "TURMA_OCORRENCIA";
+
 export type ESexo = "MASCULINO" | "FEMININO" | "PREFIRO_NAO_INFORMAR";
 
 export interface EnderecoRequest {
@@ -315,13 +321,49 @@ export interface InscricaoTurmaRequest {
     observacoes?: string | null;
 }
 
-/** Uma linha do roster de uma turma - telefone/endereço são do responsável (Cliente), não do aluno. */
+/**
+ * Retorno da matrícula em Turma - não há lista de aulas datadas (matricular não gera Agendamento
+ * por aula, ver TurmaService#inscrever no backend): o cliente precisa saber o padrão recorrente
+ * (dia da semana/hora/local da turma), não datas específicas.
+ */
+export interface InscricaoTurmaResponse {
+    matriculaId: number;
+    turmaCodigo: string;
+    categoria: ECategoriaServico;
+    instrumento: EInstrumento | null;
+    diaSemana: EDiaSemana;
+    hora: string;
+    local: string;
+    tipoContratacao: ETipoContratacao;
+    valorTotal: number;
+}
+
+export interface MatriculaResponse {
+    id: number;
+    clienteId: number;
+    alunoId: number;
+    alunoNome: string;
+    turmaId: number | null;
+    categoria: ECategoriaServico;
+    modalidade: EModalidadeServico | null;
+    instrumento: EInstrumento | null;
+    tipoContratacao: ETipoContratacao;
+    valorTotal: number;
+    aulasContratadas: number;
+    aulasRestantes: number;
+    status: EStatusMatricula;
+    dataContratacao: string;
+}
+
+/** Uma linha do roster de uma turma - telefone/endereço são do responsável (Cliente), não do aluno. status ATIVA/CANCELADA representa ativo/inativo na turma. */
 export interface AlunoDaTurma {
     id: number;
+    matriculaId: number;
     nomeAluno: string;
     idade: number;
     endereco: string | null;
     telefone: string;
+    status: EStatusMatricula;
 }
 
 /** Turma + alunos matriculados nela - ver AdminVerTurmasPage. */
@@ -337,6 +379,34 @@ export interface TurmaComAlunos {
     endereco: EnderecoRequest | null;
     status: EStatusTurma;
     alunos: AlunoDaTurma[];
+}
+
+/**
+ * A aula de uma Turma numa semana específica, tratada como um compromisso único na agenda do
+ * professor (ver AdminAgendaPage). id é nulo quando a ocorrência ainda é "virtual" (nunca teve o
+ * status alterado) - use turmaId+data para agir sobre ela mesmo assim.
+ */
+export interface TurmaOcorrenciaResponse {
+    id: number | null;
+    turmaId: number;
+    turmaCodigo: string;
+    categoria: ECategoriaServico;
+    instrumento: EInstrumento | null;
+    data: string;
+    hora: string;
+    local: string | null;
+    duracaoMinutos: number | null;
+    status: EStatusAgendamento;
+    dataHoraCheckIn: string | null;
+    dataHoraFinalizacao: string | null;
+    alunosAtivos: AlunoDaTurma[];
+}
+
+/** Linha unificada da agenda do professor - um compromisso é OU um Agendamento OU uma ocorrência de Turma, nunca os dois. */
+export interface CompromissoResponse {
+    tipo: ECompromissoTipo;
+    agendamento: AgendamentoResponse | null;
+    turmaOcorrencia: TurmaOcorrenciaResponse | null;
 }
 
 export interface MusicoParceiro {

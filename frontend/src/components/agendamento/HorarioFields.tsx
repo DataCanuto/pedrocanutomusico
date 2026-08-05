@@ -131,7 +131,7 @@ export function HorarioFields({ precos }: { precos: PrecoServico[] }) {
                     slots={SLOTS}
                     valorSelecionado={campoHora.value}
                     onSelecionar={campoHora.onChange}
-                    ehBloqueado={(slot) => data === "" || duracaoMinutos == null || slotIndisponivel(slot, duracaoMinutos, ocupados)}
+                    ehBloqueado={(slot) => data !== "" && duracaoMinutos != null && slotIndisponivel(slot, duracaoMinutos, ocupados)}
                 />
                 {data === "" && <p className="aviso">Escolha a data acima para ver os horários já ocupados.</p>}
             </fieldset>

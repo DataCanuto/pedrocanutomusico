@@ -13,6 +13,8 @@ public record MatriculaResponseDTO(
         Long clienteId,
         Long alunoId,
         String alunoNome,
+        /** Preenchido só para matrícula de Turma (aula em grupo) - null para pacote individual. */
+        Long turmaId,
         ECategoriaServico categoria,
         EModalidadeServico modalidade,
         EInstrumento instrumento,

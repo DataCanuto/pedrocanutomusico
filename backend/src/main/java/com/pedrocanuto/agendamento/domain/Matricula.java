@@ -53,6 +53,11 @@ public class Matricula {
     @JoinColumn(name = "preco_servico_id", nullable = false)
     private PrecoServico precoServico;
 
+    /** Preenchido só quando a matrícula é de uma Turma (aula em grupo) - null para pacote individual. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "turma_id")
+    private Turma turma;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private ETipoContratacao tipoContratacao;

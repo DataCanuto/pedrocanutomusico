@@ -2,6 +2,8 @@ package com.pedrocanuto.agendamento.controller.admin;
 
 import com.pedrocanuto.agendamento.domain.enums.ECategoriaServico;
 import com.pedrocanuto.agendamento.dto.response.AgendamentoResponseDTO;
+import com.pedrocanuto.agendamento.dto.response.CompromissoResponseDTO;
+import com.pedrocanuto.agendamento.service.AgendaAdminService;
 import com.pedrocanuto.agendamento.service.AgendamentoService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -27,16 +29,19 @@ import org.springframework.web.bind.annotation.RestController;
 public class AgendamentoAdminController {
 
     private final AgendamentoService agendamentoService;
+    private final AgendaAdminService agendaAdminService;
 
-    public AgendamentoAdminController(AgendamentoService agendamentoService) {
+    public AgendamentoAdminController(AgendamentoService agendamentoService, AgendaAdminService agendaAdminService) {
         this.agendamentoService = agendamentoService;
+        this.agendaAdminService = agendaAdminService;
     }
 
+    /** Agendamentos individuais/evento + ocorrências de Turma juntos - ver AgendaAdminService. */
     @GetMapping
-    public List<AgendamentoResponseDTO> listar(
+    public List<CompromissoResponseDTO> listar(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data,
             @RequestParam(required = false) ECategoriaServico categoria) {
-        return agendamentoService.listar(data, categoria);
+        return agendaAdminService.listar(data, categoria);
     }
 
     @GetMapping("/{id}")

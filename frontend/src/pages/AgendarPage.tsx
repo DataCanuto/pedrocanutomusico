@@ -18,7 +18,7 @@ import { criarAgendamento } from "../services/agendamentoService";
 import { listarPrecos } from "../services/precoService";
 import { inscreverEmTurma } from "../services/turmaService";
 import { montarLinkWhatsApp } from "../services/whatsapp";
-import { formatarMoeda } from "../types/labels";
+import { CATEGORIA_LABELS, DIA_SEMANA_LABELS, INSTRUMENTO_LABELS, formatarMoeda } from "../types/labels";
 import { calcularIdade, formatarDataBr } from "../utils/calendario";
 import type {
     AgendamentoCriadoResponse,
@@ -31,6 +31,7 @@ import type {
     ETipoContratacao,
     ETipoEvento,
     InscricaoTurmaRequest,
+    InscricaoTurmaResponse,
 } from "../types/domain";
 
 /**
@@ -220,17 +221,62 @@ export function AgendarPage() {
     const tipoEvento = watch("tipoEvento");
     const ehGrupo = ehGrupoDeAula(categoria, modalidade);
 
-    const mutation = useMutation({
-        mutationFn: (v: AgendamentoFormValues): Promise<AgendamentoCriadoResponse> =>
-            ehGrupoDeAula(v.categoria, v.modalidade)
-                ? inscreverEmTurma(v.codigoTurma.trim(), paraInscricaoTurmaRequest(v))
-                : criarAgendamento(paraAgendamentoRequest(v)),
+    const mutationIndividual = useMutation({
+        mutationFn: (v: AgendamentoFormValues): Promise<AgendamentoCriadoResponse> => criarAgendamento(paraAgendamentoRequest(v)),
     });
 
-    if (mutation.isSuccess) {
-        const { agendamentos } = mutation.data;
+    /** Matricular em turma só registra o vínculo aluno<->turma - não gera aulas datadas (ver TurmaService#inscrever no backend). */
+    const mutationTurma = useMutation({
+        mutationFn: (v: AgendamentoFormValues): Promise<InscricaoTurmaResponse> =>
+            inscreverEmTurma(v.codigoTurma.trim(), paraInscricaoTurmaRequest(v)),
+    });
+
+    function onSubmit(v: AgendamentoFormValues) {
+        if (ehGrupoDeAula(v.categoria, v.modalidade)) {
+            mutationTurma.mutate(v);
+        } else {
+            mutationIndividual.mutate(v);
+        }
+    }
+
+    if (mutationTurma.isSuccess) {
+        const turma = mutationTurma.data;
+        const diaSemanaLabel = DIA_SEMANA_LABELS[turma.diaSemana];
+        const horaCurta = turma.hora.slice(0, 5);
+        const servico = turma.instrumento
+            ? `${CATEGORIA_LABELS[turma.categoria]} - ${INSTRUMENTO_LABELS[turma.instrumento]}`
+            : CATEGORIA_LABELS[turma.categoria];
+        const mensagemWhatsApp =
+            `Olá! Acabei de me matricular na turma de ${servico}, toda ${diaSemanaLabel} às ${horaCurta}` +
+            (turma.local ? `, em ${turma.local}` : "") +
+            ".";
+
+        return (
+            <div className="pagina-agendar confirmacao">
+                <h1>Matrícula recebida!</h1>
+                <p>
+                    Sua turma de <strong>{servico}</strong> acontece toda <strong>{diaSemanaLabel}</strong> às{" "}
+                    <strong>{horaCurta}</strong>
+                    {turma.local && (
+                        <>
+                            {" "}
+                            em <strong>{turma.local}</strong>
+                        </>
+                    )}
+                    .
+                </p>
+                <p>Confirme os detalhes com a gente no WhatsApp:</p>
+                <a className="botao-whatsapp" href={montarLinkWhatsApp(mensagemWhatsApp)} target="_blank" rel="noreferrer">
+                    Continuar no WhatsApp
+                </a>
+            </div>
+        );
+    }
+
+    if (mutationIndividual.isSuccess) {
+        const { agendamentos } = mutationIndividual.data;
         const primeiro = agendamentos[0];
-        const variaveis = mutation.variables;
+        const variaveis = mutationIndividual.variables;
 
         const ehAniversarioUnico =
             agendamentos.length === 1 && primeiro.categoria === "EVENTO" && primeiro.tipoEvento === "ANIVERSARIO" && variaveis != null;
@@ -323,7 +369,7 @@ export function AgendarPage() {
             <BotaoVoltar destino="/" />
             <h1>Agendar</h1>
             <FormProvider {...form}>
-                <form onSubmit={form.handleSubmit((v) => mutation.mutate(v))}>
+                <form onSubmit={form.handleSubmit(onSubmit)}>
                     <ServicoFields precos={precosQuery.data ?? []} />
                     {categoriaEhDeAula(categoria) && <AlunoFields />}
                     {categoria === "EVENTO" && tipoEvento === "ANIVERSARIO" && (
@@ -338,12 +384,14 @@ export function AgendarPage() {
                     {categoria === "MUSICOTERAPIA" && <AnamneseFields />}
                     {!ehGrupo && <HorarioFields precos={precosQuery.data ?? []} />}
 
-                    {mutation.isError && (
-                        <p className="erro-campo">{extrairMensagemErro(mutation.error, "Não foi possível agendar. Tente novamente.")}</p>
+                    {(mutationIndividual.isError || mutationTurma.isError) && (
+                        <p className="erro-campo">
+                            {extrairMensagemErro(mutationIndividual.error ?? mutationTurma.error, "Não foi possível agendar. Tente novamente.")}
+                        </p>
                     )}
 
-                    <button type="submit" disabled={mutation.isPending}>
-                        {mutation.isPending ? "Agendando..." : "Agendar agora"}
+                    <button type="submit" disabled={mutationIndividual.isPending || mutationTurma.isPending}>
+                        {mutationIndividual.isPending || mutationTurma.isPending ? "Agendando..." : "Agendar agora"}
                     </button>
                 </form>
             </FormProvider>

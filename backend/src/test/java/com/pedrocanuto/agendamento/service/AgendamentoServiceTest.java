@@ -93,7 +93,7 @@ class AgendamentoServiceTest {
         when(precoServicoService.buscarPorCategoriaModalidadeEPacote(
                 ECategoriaServico.MUSICALIZACAO_INFANTIL, EModalidadeServico.INDIVIDUAL, ETipoContratacao.AVULSO))
                 .thenReturn(preco);
-        when(matriculaService.criar(any(), any(), any(), any(), any())).thenReturn(matricula);
+        when(matriculaService.criar(any(), any(), any(), any(), any(), any())).thenReturn(matricula);
         when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of());
         when(agendamentoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -121,7 +121,7 @@ class AgendamentoServiceTest {
         when(precoServicoService.buscarPorCategoriaModalidadeEPacote(
                 ECategoriaServico.MUSICOTERAPIA, EModalidadeServico.INDIVIDUAL, ETipoContratacao.AVULSO))
                 .thenReturn(preco);
-        when(matriculaService.criar(any(), any(), any(), any(), any())).thenReturn(matricula);
+        when(matriculaService.criar(any(), any(), any(), any(), any(), any())).thenReturn(matricula);
         when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of());
         when(agendamentoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -145,7 +145,7 @@ class AgendamentoServiceTest {
         when(precoServicoService.buscarPorCategoriaModalidadeEPacote(
                 ECategoriaServico.MUSICOTERAPIA, EModalidadeServico.INDIVIDUAL, ETipoContratacao.AVULSO))
                 .thenReturn(preco);
-        when(matriculaService.criar(any(), any(), any(), any(), any())).thenReturn(matricula);
+        when(matriculaService.criar(any(), any(), any(), any(), any(), any())).thenReturn(matricula);
         when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of());
         when(agendamentoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -168,7 +168,7 @@ class AgendamentoServiceTest {
         when(clienteService.buscarOuCriar(any())).thenReturn(cliente);
         when(alunoService.buscarOuCriarParaResponsavel(any(), any())).thenReturn(aluno);
         when(precoServicoService.buscarPorCategoriaModalidadeEPacote(any(), any(), any())).thenReturn(preco);
-        when(matriculaService.criar(any(), any(), any(), any(), any())).thenReturn(matricula);
+        when(matriculaService.criar(any(), any(), any(), any(), any(), any())).thenReturn(matricula);
         when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of());
         when(agendamentoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -182,43 +182,6 @@ class AgendamentoServiceTest {
         verify(agendamentoRepository, org.mockito.Mockito.times(4)).save(captor.capture());
         // 560.00 / 4 aulas = 140.00
         assertThat(captor.getValue().getValorCobrado()).isEqualByComparingTo("140.00");
-    }
-
-    @Test
-    void criarInscricaoTurmaGeraUmAgendamentoPorAulaDoPacoteNoDiaEHoraDaTurma() {
-        Cliente cliente = new Cliente();
-        Aluno aluno = new Aluno();
-        aluno.setDataNascimento(LocalDate.now().minusYears(8));
-        PrecoServico preco = precoMusicalizacaoIndividualAvulso();
-        Matricula matricula = matriculaDe(preco, ETipoContratacao.PACOTE_4);
-        matricula.setValorTotal(new BigDecimal("560.00"));
-
-        when(alunoService.buscarOuCriarParaResponsavel(any(), any())).thenReturn(aluno);
-        when(precoServicoService.buscarPorCategoriaModalidadeEPacote(any(), any(), any())).thenReturn(preco);
-        when(matriculaService.criar(any(), any(), any(), any(), any())).thenReturn(matricula);
-        when(agendamentoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-
-        Turma turma = new Turma();
-        turma.setStatus(EStatusTurma.ATIVA);
-        turma.setCategoria(ECategoriaServico.MUSICALIZACAO_INFANTIL);
-        turma.setDiaSemana(DayOfWeek.TUESDAY);
-        turma.setHora(LocalTime.of(15, 0));
-        turma.setLocal("Estúdio Pedro Canuto");
-
-        AlunoSelecaoRequestDTO alunoSelecao = new AlunoSelecaoRequestDTO(false,
-                new AlunoRequestDTO("Sofia Souza", LocalDate.now().minusYears(8), null, null));
-
-        AgendamentoCriadoResponseDTO resposta =
-                agendamentoService.criarInscricaoTurma(cliente, alunoSelecao, turma, ETipoContratacao.PACOTE_4, "obs");
-
-        ArgumentCaptor<Agendamento> captor = ArgumentCaptor.forClass(Agendamento.class);
-        verify(agendamentoRepository, org.mockito.Mockito.times(4)).save(captor.capture());
-        assertThat(captor.getAllValues()).allMatch(a -> a.getTurma() == turma);
-        assertThat(captor.getAllValues()).allMatch(a -> a.getHora().equals(LocalTime.of(15, 0)));
-        assertThat(captor.getAllValues()).allSatisfy(a -> assertThat(a.getData().getDayOfWeek()).isEqualTo(DayOfWeek.TUESDAY));
-        assertThat(resposta.agendamentos()).hasSize(4);
-        // não checa disponibilidade - turma é aula em grupo, vários alunos podem ocupar o mesmo slot.
-        verify(agendamentoRepository, never()).findByDataAndStatusNot(any(), any());
     }
 
     /**
@@ -375,7 +338,7 @@ class AgendamentoServiceTest {
         when(clienteService.buscarOuCriar(any())).thenReturn(cliente);
         when(alunoService.buscarOuCriarParaResponsavel(any(), any())).thenReturn(aluno);
         when(precoServicoService.buscarPorCategoriaModalidadeEPacote(any(), any(), any())).thenReturn(preco);
-        when(matriculaService.criar(any(), any(), any(), any(), any())).thenReturn(matricula);
+        when(matriculaService.criar(any(), any(), any(), any(), any(), any())).thenReturn(matricula);
         when(agendamentoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
@@ -425,7 +388,7 @@ class AgendamentoServiceTest {
         assertThat(captor.getValue().getMatricula()).isNull();
         assertThat(captor.getValue().getValorCobrado()).isEqualByComparingTo("600.00");
         assertThat(captor.getValue().getDuracaoMinutos()).isEqualTo(60);
-        verify(matriculaService, never()).criar(any(), any(), any(), any(), any());
+        verify(matriculaService, never()).criar(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -454,7 +417,7 @@ class AgendamentoServiceTest {
         verify(agendamentoRepository).save(captor.capture());
         assertThat(captor.getValue().getAluno()).isSameAs(aniversariante);
         assertThat(captor.getValue().getMatricula()).isNull();
-        verify(matriculaService, never()).criar(any(), any(), any(), any(), any());
+        verify(matriculaService, never()).criar(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -574,7 +537,7 @@ class AgendamentoServiceTest {
                 ECategoriaServico.MUSICOTERAPIA, EModalidadeServico.INDIVIDUAL, ETipoContratacao.PACOTE_4))
                 .thenReturn(pacote4);
         when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of());
-        when(matriculaService.criar(any(), any(), any(), any(), any())).thenReturn(novaMatricula);
+        when(matriculaService.criar(any(), any(), any(), any(), any(), any())).thenReturn(novaMatricula);
         when(agendamentoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         AgendamentoCriadoResponseDTO resposta = agendamentoService.confirmarRecorrencia(20L);
@@ -654,7 +617,7 @@ class AgendamentoServiceTest {
 
         assertThatThrownBy(() -> agendamentoService.confirmarRecorrencia(23L))
                 .isInstanceOf(RegraDeNegocioException.class);
-        verify(matriculaService, never()).criar(any(), any(), any(), any(), any());
+        verify(matriculaService, never()).criar(any(), any(), any(), any(), any(), any());
         verify(agendamentoRepository, never()).save(any());
     }
 

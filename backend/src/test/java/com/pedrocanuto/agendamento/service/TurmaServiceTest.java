@@ -3,19 +3,21 @@ package com.pedrocanuto.agendamento.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.pedrocanuto.agendamento.domain.Agendamento;
 import com.pedrocanuto.agendamento.domain.Aluno;
 import com.pedrocanuto.agendamento.domain.Cliente;
 import com.pedrocanuto.agendamento.domain.Endereco;
+import com.pedrocanuto.agendamento.domain.Matricula;
+import com.pedrocanuto.agendamento.domain.PrecoServico;
 import com.pedrocanuto.agendamento.domain.Turma;
 import com.pedrocanuto.agendamento.domain.enums.ECategoriaServico;
 import com.pedrocanuto.agendamento.domain.enums.EInstrumento;
+import com.pedrocanuto.agendamento.domain.enums.EModalidadeServico;
+import com.pedrocanuto.agendamento.domain.enums.EStatusMatricula;
 import com.pedrocanuto.agendamento.domain.enums.EStatusTurma;
 import com.pedrocanuto.agendamento.domain.enums.ETipoContratacao;
 import com.pedrocanuto.agendamento.dto.request.AlunoRequestDTO;
@@ -24,15 +26,17 @@ import com.pedrocanuto.agendamento.dto.request.ClienteRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.EnderecoRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.InscricaoTurmaRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.TurmaRequestDTO;
-import com.pedrocanuto.agendamento.dto.response.AgendamentoCriadoResponseDTO;
+import com.pedrocanuto.agendamento.dto.response.InscricaoTurmaResponseDTO;
+import com.pedrocanuto.agendamento.dto.response.MatriculaResponseDTO;
 import com.pedrocanuto.agendamento.dto.response.TurmaComAlunosResponseDTO;
 import com.pedrocanuto.agendamento.exception.RegraDeNegocioException;
 import com.pedrocanuto.agendamento.mapper.TurmaMapper;
-import com.pedrocanuto.agendamento.repository.AgendamentoRepository;
+import com.pedrocanuto.agendamento.repository.MatriculaRepository;
 import com.pedrocanuto.agendamento.repository.TurmaRepository;
 import com.pedrocanuto.agendamento.service.validation.AgendamentoValidator;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
@@ -49,11 +53,17 @@ class TurmaServiceTest {
     @Mock
     private TurmaRepository turmaRepository;
     @Mock
-    private AgendamentoRepository agendamentoRepository;
+    private MatriculaRepository matriculaRepository;
     @Mock
     private TurmaMapper turmaMapper;
     @Mock
     private ClienteService clienteService;
+    @Mock
+    private AlunoService alunoService;
+    @Mock
+    private PrecoServicoService precoServicoService;
+    @Mock
+    private MatriculaService matriculaService;
     @Mock
     private AgendamentoService agendamentoService;
 
@@ -61,8 +71,8 @@ class TurmaServiceTest {
 
     @BeforeEach
     void setUp() {
-        turmaService = new TurmaService(turmaRepository, agendamentoRepository, turmaMapper, clienteService,
-                agendamentoService, new AgendamentoValidator());
+        turmaService = new TurmaService(turmaRepository, matriculaRepository, turmaMapper, clienteService, alunoService,
+                precoServicoService, matriculaService, agendamentoService, new AgendamentoValidator());
     }
 
     @Test
@@ -151,26 +161,33 @@ class TurmaServiceTest {
                 .hasMessageContaining("inscrições");
     }
 
+    /**
+     * Matricular um aluno numa Turma só registra o vínculo aluno<->turma (Matricula#turma) - não
+     * gera Agendamento datado (ver TurmaService#inscrever). tipoContratacao continua decidindo o
+     * pacote/valor de referência via PrecoServico GRUPO.
+     */
     @Test
-    void inscreverDelegaParaAgendamentoServiceComDadosDaTurma() {
-        Turma turma = new Turma();
-        turma.setStatus(EStatusTurma.ATIVA);
-        turma.setCategoria(ECategoriaServico.MUSICALIZACAO_INFANTIL);
-        turma.setDiaSemana(DayOfWeek.TUESDAY);
-        turma.setHora(LocalTime.of(15, 0));
-        turma.setLocal("Estúdio Pedro Canuto");
+    void inscreverDelegaParaMatriculaServiceComDadosDaTurma() {
+        Turma turma = turmaComEndereco();
         when(turmaRepository.findByCodigo("XYZ999")).thenReturn(Optional.of(turma));
 
         Cliente cliente = new Cliente();
         when(clienteService.buscarOuCriar(any())).thenReturn(cliente);
-        AgendamentoCriadoResponseDTO resposta = new AgendamentoCriadoResponseDTO(1L, List.of());
-        when(agendamentoService.criarInscricaoTurma(any(), any(), any(), any(), any())).thenReturn(resposta);
+        Aluno aluno = new Aluno();
+        when(alunoService.buscarOuCriarParaResponsavel(any(), any())).thenReturn(aluno);
+        PrecoServico precoServico = new PrecoServico();
+        when(precoServicoService.buscarPorCategoriaModalidadeEPacote(
+                ECategoriaServico.MUSICALIZACAO_INFANTIL, EModalidadeServico.GRUPO, ETipoContratacao.PACOTE_4))
+                .thenReturn(precoServico);
+        Matricula matricula = new Matricula();
+        when(matriculaService.criar(cliente, aluno, precoServico, ETipoContratacao.PACOTE_4, turma.getInstrumento(), turma))
+                .thenReturn(matricula);
+        InscricaoTurmaResponseDTO resposta = new InscricaoTurmaResponseDTO(1L, "XYZ999", ECategoriaServico.MUSICALIZACAO_INFANTIL,
+                null, DayOfWeek.TUESDAY, LocalTime.of(15, 0), turma.getLocal(), ETipoContratacao.PACOTE_4, null);
+        when(turmaMapper.toInscricaoResponseDTO(matricula, turma)).thenReturn(resposta);
 
         InscricaoTurmaRequestDTO dto = inscricaoDTO();
         assertThat(turmaService.inscrever("xyz999", dto)).isSameAs(resposta);
-
-        verify(agendamentoService).criarInscricaoTurma(
-                eq(cliente), eq(dto.aluno()), eq(turma), eq(ETipoContratacao.PACOTE_4), eq(dto.observacoes()));
     }
 
     @Test
@@ -178,8 +195,9 @@ class TurmaServiceTest {
         Turma turma = turmaComEndereco();
         when(turmaRepository.findByCodigo("XYZ999")).thenReturn(Optional.of(turma));
         when(clienteService.buscarOuCriar(any())).thenReturn(new Cliente());
-        when(agendamentoService.criarInscricaoTurma(any(), any(), any(), any(), any()))
-                .thenReturn(new AgendamentoCriadoResponseDTO(1L, List.of()));
+        when(alunoService.buscarOuCriarParaResponsavel(any(), any())).thenReturn(new Aluno());
+        when(precoServicoService.buscarPorCategoriaModalidadeEPacote(any(), any(), any())).thenReturn(new PrecoServico());
+        when(matriculaService.criar(any(), any(), any(), any(), any(), any())).thenReturn(new Matricula());
 
         ClienteRequestDTO clienteSemEndereco =
                 new ClienteRequestDTO("Maria Souza", "71999588950", null, null, null, null, null, List.of());
@@ -203,8 +221,9 @@ class TurmaServiceTest {
         Turma turma = turmaComEndereco();
         when(turmaRepository.findByCodigo("XYZ999")).thenReturn(Optional.of(turma));
         when(clienteService.buscarOuCriar(any())).thenReturn(new Cliente());
-        when(agendamentoService.criarInscricaoTurma(any(), any(), any(), any(), any()))
-                .thenReturn(new AgendamentoCriadoResponseDTO(1L, List.of()));
+        when(alunoService.buscarOuCriarParaResponsavel(any(), any())).thenReturn(new Aluno());
+        when(precoServicoService.buscarPorCategoriaModalidadeEPacote(any(), any(), any())).thenReturn(new PrecoServico());
+        when(matriculaService.criar(any(), any(), any(), any(), any(), any())).thenReturn(new Matricula());
 
         InscricaoTurmaRequestDTO dto = inscricaoDTO();
 
@@ -228,6 +247,30 @@ class TurmaServiceTest {
         assertThatThrownBy(() -> turmaService.inscrever("xyz999", dto))
                 .isInstanceOf(RegraDeNegocioException.class)
                 .hasMessageContaining("endereço");
+    }
+
+    @Test
+    void inativarMatriculaDeTurmaDelegaParaMatriculaService() {
+        Matricula matricula = new Matricula();
+        matricula.setTurma(turmaComEndereco());
+        when(matriculaService.buscarPorId(7L)).thenReturn(matricula);
+        MatriculaResponseDTO resposta = new MatriculaResponseDTO(7L, null, null, null, null, null, null, null, null, null, 0, 0,
+                EStatusMatricula.CANCELADA, LocalDateTime.now());
+        when(matriculaService.inativar(7L)).thenReturn(resposta);
+
+        assertThat(turmaService.inativarMatricula(7L)).isSameAs(resposta);
+    }
+
+    @Test
+    void inativarMatriculaQueNaoPertenceATurmaLancaExcecao() {
+        Matricula matricula = new Matricula();
+        matricula.setTurma(null);
+        when(matriculaService.buscarPorId(8L)).thenReturn(matricula);
+
+        assertThatThrownBy(() -> turmaService.inativarMatricula(8L))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("turma");
+        verify(matriculaService, never()).inativar(any());
     }
 
     private Turma turmaComEndereco() {
@@ -284,14 +327,15 @@ class TurmaServiceTest {
         sofia.setDataNascimento(LocalDate.now().minusYears(6));
         sofia.setResponsavel(responsavel);
 
-        // Duas aulas do mesmo pacote/turma para a mesma aluna - precisa deduplicar por aluno.id.
-        Agendamento aula1 = new Agendamento();
-        aula1.setTurma(turmaSegunda);
-        aula1.setAluno(sofia);
-        Agendamento aula2 = new Agendamento();
-        aula2.setTurma(turmaSegunda);
-        aula2.setAluno(sofia);
-        when(agendamentoRepository.listarComTurmaEAluno()).thenReturn(List.of(aula1, aula2));
+        Matricula matricula = new Matricula();
+        matricula.setId(100L);
+        matricula.setTurma(turmaSegunda);
+        matricula.setAluno(sofia);
+        matricula.setStatus(EStatusMatricula.ATIVA);
+        matricula.setDataContratacao(LocalDateTime.now());
+        when(matriculaRepository.listarComTurmaEAluno()).thenReturn(List.of(matricula));
+        when(turmaMapper.paraEnderecoDTO(any())).thenReturn(null);
+        when(turmaMapper.paraAlunoDaTurma(matricula)).thenCallRealMethod();
 
         List<TurmaComAlunosResponseDTO> resultado = turmaService.listarComAlunos();
 
@@ -303,8 +347,56 @@ class TurmaServiceTest {
         assertThat(resultado.get(0).alunos().get(0).nomeAluno()).isEqualTo("Sofia Souza");
         assertThat(resultado.get(0).alunos().get(0).telefone()).isEqualTo("71999588950");
         assertThat(resultado.get(0).alunos().get(0).endereco()).isEqualTo("Av. Oceânica, 500 - Pituba, Salvador/BA");
+        assertThat(resultado.get(0).alunos().get(0).status()).isEqualTo(EStatusMatricula.ATIVA);
 
         assertThat(resultado.get(1).alunos()).isEmpty();
+    }
+
+    /**
+     * Quando o aluno saiu da turma (matrícula CANCELADA) e depois voltou (nova matrícula ATIVA),
+     * só a mais recente por dataContratacao deve aparecer no roster - não as duas.
+     */
+    @Test
+    void listarComAlunosDedupPorMatriculaMaisRecenteQuandoAlunoReingressou() {
+        Turma turma = new Turma();
+        turma.setId(1L);
+        turma.setDiaSemana(DayOfWeek.MONDAY);
+        turma.setHora(LocalTime.of(16, 0));
+        turma.setStatus(EStatusTurma.ATIVA);
+        when(turmaRepository.findAll()).thenReturn(List.of(turma));
+
+        Cliente responsavel = new Cliente();
+        responsavel.setTelefone("71999588950");
+        Aluno aluno = new Aluno();
+        aluno.setId(10L);
+        aluno.setNome("Sofia Souza");
+        aluno.setDataNascimento(LocalDate.now().minusYears(6));
+        aluno.setResponsavel(responsavel);
+
+        Matricula antiga = new Matricula();
+        antiga.setId(100L);
+        antiga.setTurma(turma);
+        antiga.setAluno(aluno);
+        antiga.setStatus(EStatusMatricula.CANCELADA);
+        antiga.setDataContratacao(LocalDateTime.now().minusMonths(2));
+
+        Matricula recente = new Matricula();
+        recente.setId(101L);
+        recente.setTurma(turma);
+        recente.setAluno(aluno);
+        recente.setStatus(EStatusMatricula.ATIVA);
+        recente.setDataContratacao(LocalDateTime.now());
+
+        when(matriculaRepository.listarComTurmaEAluno()).thenReturn(List.of(antiga, recente));
+        when(turmaMapper.paraEnderecoDTO(any())).thenReturn(null);
+        when(turmaMapper.paraAlunoDaTurma(any())).thenCallRealMethod();
+
+        List<TurmaComAlunosResponseDTO> resultado = turmaService.listarComAlunos();
+
+        assertThat(resultado).hasSize(1);
+        assertThat(resultado.get(0).alunos()).hasSize(1);
+        assertThat(resultado.get(0).alunos().get(0).matriculaId()).isEqualTo(101L);
+        assertThat(resultado.get(0).alunos().get(0).status()).isEqualTo(EStatusMatricula.ATIVA);
     }
 
     private EnderecoRequestDTO enderecoDTO() {

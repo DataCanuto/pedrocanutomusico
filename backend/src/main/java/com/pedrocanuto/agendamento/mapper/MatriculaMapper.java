@@ -11,6 +11,7 @@ public interface MatriculaMapper {
     @Mapping(target = "clienteId", source = "matricula.cliente.id")
     @Mapping(target = "alunoId", source = "matricula.aluno.id")
     @Mapping(target = "alunoNome", source = "matricula.aluno.nome")
+    @Mapping(target = "turmaId", source = "matricula.turma.id")
     @Mapping(target = "categoria", source = "matricula.precoServico.categoria")
     @Mapping(target = "modalidade", source = "matricula.precoServico.modalidade")
     @Mapping(target = "aulasRestantes", source = "aulasRestantes")

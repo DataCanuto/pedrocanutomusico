@@ -4,12 +4,14 @@ import com.pedrocanuto.agendamento.domain.Aluno;
 import com.pedrocanuto.agendamento.domain.Cliente;
 import com.pedrocanuto.agendamento.domain.Matricula;
 import com.pedrocanuto.agendamento.domain.PrecoServico;
+import com.pedrocanuto.agendamento.domain.Turma;
 import com.pedrocanuto.agendamento.domain.enums.EInstrumento;
 import com.pedrocanuto.agendamento.domain.enums.EStatusAgendamento;
 import com.pedrocanuto.agendamento.domain.enums.EStatusMatricula;
 import com.pedrocanuto.agendamento.domain.enums.ETipoContratacao;
 import com.pedrocanuto.agendamento.dto.response.MatriculaResponseDTO;
 import com.pedrocanuto.agendamento.exception.RecursoNaoEncontradoException;
+import com.pedrocanuto.agendamento.exception.RegraDeNegocioException;
 import com.pedrocanuto.agendamento.mapper.MatriculaMapper;
 import com.pedrocanuto.agendamento.repository.AgendamentoRepository;
 import com.pedrocanuto.agendamento.repository.MatriculaRepository;
@@ -38,7 +40,7 @@ public class MatriculaService {
     }
 
     public Matricula criar(Cliente cliente, Aluno aluno, PrecoServico precoServico, ETipoContratacao tipoContratacao,
-                            EInstrumento instrumento) {
+                            EInstrumento instrumento, Turma turma) {
         Matricula matricula = new Matricula();
         matricula.setCliente(cliente);
         matricula.setAluno(aluno);
@@ -47,8 +49,19 @@ public class MatriculaService {
         matricula.setValorTotal(precoServico.getValor());
         matricula.setAulasContratadas(tipoContratacao.getQuantidadeAulas());
         matricula.setInstrumento(instrumento);
+        matricula.setTurma(turma);
         matricula.setStatus(EStatusMatricula.ATIVA);
         return matriculaRepository.save(matricula);
+    }
+
+    /** "Aluno saiu da turma": inativa sem apagar histórico - reaproveita EStatusMatricula.CANCELADA como "inativo". */
+    public MatriculaResponseDTO inativar(Long id) {
+        Matricula matricula = buscarPorId(id);
+        if (matricula.getStatus() != EStatusMatricula.ATIVA) {
+            throw new RegraDeNegocioException("Matrícula já está inativa");
+        }
+        matricula.setStatus(EStatusMatricula.CANCELADA);
+        return toResponseDTO(matricula);
     }
 
     /** Toma lock pessimista - use somente dentro do fluxo transacional que vai criar um Agendamento contra o saldo. */

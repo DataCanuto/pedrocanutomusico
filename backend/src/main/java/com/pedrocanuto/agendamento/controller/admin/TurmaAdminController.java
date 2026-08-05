@@ -2,6 +2,7 @@ package com.pedrocanuto.agendamento.controller.admin;
 
 import com.pedrocanuto.agendamento.dto.request.EnderecoRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.TurmaRequestDTO;
+import com.pedrocanuto.agendamento.dto.response.MatriculaResponseDTO;
 import com.pedrocanuto.agendamento.dto.response.TurmaComAlunosResponseDTO;
 import com.pedrocanuto.agendamento.dto.response.TurmaResponseDTO;
 import com.pedrocanuto.agendamento.service.TurmaService;
@@ -45,5 +46,11 @@ public class TurmaAdminController {
     @PatchMapping("/{id}/endereco")
     public TurmaResponseDTO atualizarEndereco(@PathVariable Long id, @Valid @RequestBody EnderecoRequestDTO dto) {
         return turmaService.atualizarEndereco(id, dto);
+    }
+
+    /** "Aluno saiu da turma" - inativa a matrícula sem apagar histórico (ver TurmaService#inativarMatricula). */
+    @PatchMapping("/matriculas/{id}/inativar")
+    public MatriculaResponseDTO inativarMatricula(@PathVariable Long id) {
+        return turmaService.inativarMatricula(id);
     }
 }

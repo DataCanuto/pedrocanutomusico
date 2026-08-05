@@ -1,8 +1,9 @@
 import { api } from "./api";
 import type {
-    AgendamentoCriadoResponse,
     EnderecoRequest,
     InscricaoTurmaRequest,
+    InscricaoTurmaResponse,
+    MatriculaResponse,
     Turma,
     TurmaComAlunos,
     TurmaRequest,
@@ -13,9 +14,9 @@ export async function buscarTurmaPorCodigo(codigo: string): Promise<Turma> {
     return data;
 }
 
-/** Gera uma aula por semana no pacote escolhido - mesmo contrato de resposta de POST /agendamentos (lista de aulas). */
-export async function inscreverEmTurma(codigo: string, dto: InscricaoTurmaRequest): Promise<AgendamentoCriadoResponse> {
-    const { data } = await api.post<AgendamentoCriadoResponse>(`/turmas/${codigo}/inscricoes`, dto);
+/** Só registra o vínculo aluno<->turma - não gera aulas datadas (a turma já existe como compromisso fixo na agenda). */
+export async function inscreverEmTurma(codigo: string, dto: InscricaoTurmaRequest): Promise<InscricaoTurmaResponse> {
+    const { data } = await api.post<InscricaoTurmaResponse>(`/turmas/${codigo}/inscricoes`, dto);
     return data;
 }
 
@@ -36,6 +37,14 @@ export async function listarTurmasComAlunos(adminKey: string): Promise<TurmaComA
 /** Completa/corrige o endereço estruturado de uma turma já existente (ver AdminVerTurmasPage). */
 export async function atualizarEnderecoTurma(id: number, dto: EnderecoRequest, adminKey: string): Promise<Turma> {
     const { data } = await api.patch<Turma>(`/admin/turmas/${id}/endereco`, dto, {
+        headers: { "X-Admin-Key": adminKey },
+    });
+    return data;
+}
+
+/** "Aluno saiu da turma" - inativa a matrícula sem apagar histórico (ver AdminVerTurmasPage). */
+export async function inativarMatriculaTurma(matriculaId: number, adminKey: string): Promise<MatriculaResponse> {
+    const { data } = await api.patch<MatriculaResponse>(`/admin/turmas/matriculas/${matriculaId}/inativar`, null, {
         headers: { "X-Admin-Key": adminKey },
     });
     return data;

@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { AdminGate } from "../../components/admin/AdminGate";
 import { AcoesContato } from "../../components/admin/AcoesContato";
@@ -6,9 +6,9 @@ import { AccordionItem } from "../../components/ui/Accordion";
 import { BotaoCopiar } from "../../components/ui/BotaoCopiar";
 import { extrairMensagemErro } from "../../services/api";
 import { buscarEnderecoPorCep } from "../../services/cepService";
-import { atualizarEnderecoTurma, listarTurmasComAlunos } from "../../services/turmaService";
-import { CATEGORIA_LABELS, DIA_SEMANA_LABELS, INSTRUMENTO_LABELS } from "../../types/labels";
-import type { EnderecoRequest, TurmaComAlunos } from "../../types/domain";
+import { atualizarEnderecoTurma, inativarMatriculaTurma, listarTurmasComAlunos } from "../../services/turmaService";
+import { CATEGORIA_LABELS, DIA_SEMANA_LABELS, INSTRUMENTO_LABELS, STATUS_MATRICULA_LABELS } from "../../types/labels";
+import type { AlunoDaTurma, EnderecoRequest, TurmaComAlunos } from "../../types/domain";
 
 const STATUS_TURMA_LABELS: Record<TurmaComAlunos["status"], string> = {
     ATIVA: "Ativa",
@@ -22,6 +22,17 @@ export function AdminVerTurmasPage() {
 
 function ListaDeTurmas({ adminKey }: { adminKey: string }) {
     const turmasQuery = useQuery({ queryKey: ["admin-turmas"], queryFn: () => listarTurmasComAlunos(adminKey) });
+    const queryClient = useQueryClient();
+    const [erroRemocao, setErroRemocao] = useState<string | null>(null);
+
+    const inativarMutation = useMutation({
+        mutationFn: (matriculaId: number) => inativarMatriculaTurma(matriculaId, adminKey),
+        onSuccess: () => {
+            setErroRemocao(null);
+            queryClient.invalidateQueries({ queryKey: ["admin-turmas"] });
+        },
+        onError: (e) => setErroRemocao(extrairMensagemErro(e, "Não foi possível remover o aluno da turma.")),
+    });
 
     return (
         <>
@@ -29,6 +40,7 @@ function ListaDeTurmas({ adminKey }: { adminKey: string }) {
             {turmasQuery.isError && (
                 <p className="erro-campo">{extrairMensagemErro(turmasQuery.error, "Não foi possível carregar as turmas.")}</p>
             )}
+            {erroRemocao && <p className="erro-campo">{erroRemocao}</p>}
             {turmasQuery.data && turmasQuery.data.length === 0 && <p>Nenhuma turma cadastrada ainda.</p>}
 
             {turmasQuery.data && turmasQuery.data.length > 0 && (
@@ -40,7 +52,11 @@ function ListaDeTurmas({ adminKey }: { adminKey: string }) {
                                 <BotaoCopiar valor={turma.codigo} label="Copiar código" />
                             </p>
                             <EnderecoDaTurma turma={turma} adminKey={adminKey} />
-                            <TabelaDeAlunos turma={turma} />
+                            <TabelaDeAlunos
+                                turma={turma}
+                                onRemover={(matriculaId) => inativarMutation.mutate(matriculaId)}
+                                removendoId={inativarMutation.isPending ? (inativarMutation.variables ?? null) : null}
+                            />
                         </AccordionItem>
                     ))}
                 </div>
@@ -57,7 +73,8 @@ function tituloTurma(turma: TurmaComAlunos): string {
 }
 
 function subtituloTurma(turma: TurmaComAlunos): string {
-    const quantidade = turma.alunos.length === 1 ? "1 aluno" : `${turma.alunos.length} alunos`;
+    const ativos = turma.alunos.filter((aluno) => aluno.status === "ATIVA").length;
+    const quantidade = ativos === 1 ? "1 aluno" : `${ativos} alunos`;
     // turma.hora chega como "HH:mm:ss" (serialização padrão de LocalTime) - só HH:mm interessa aqui.
     return `${DIA_SEMANA_LABELS[turma.diaSemana]} às ${turma.hora.slice(0, 5)} - ${turma.local} - ${quantidade} - ${STATUS_TURMA_LABELS[turma.status]}`;
 }
@@ -208,7 +225,15 @@ function FormularioEnderecoTurma({
     );
 }
 
-function TabelaDeAlunos({ turma }: { turma: TurmaComAlunos }) {
+function TabelaDeAlunos({
+    turma,
+    onRemover,
+    removendoId,
+}: {
+    turma: TurmaComAlunos;
+    onRemover: (matriculaId: number) => void;
+    removendoId: number | null;
+}) {
     if (turma.alunos.length === 0) {
         return <p>Nenhum aluno matriculado nesta turma ainda.</p>;
     }
@@ -221,18 +246,30 @@ function TabelaDeAlunos({ turma }: { turma: TurmaComAlunos }) {
                     <th>Idade</th>
                     <th>Endereço</th>
                     <th>Telefone</th>
+                    <th>Status</th>
                     <th></th>
                 </tr>
             </thead>
             <tbody>
-                {turma.alunos.map((aluno) => (
-                    <tr key={aluno.id}>
+                {turma.alunos.map((aluno: AlunoDaTurma) => (
+                    <tr key={aluno.matriculaId}>
                         <td>{aluno.nomeAluno}</td>
                         <td>{aluno.idade}</td>
                         <td>{aluno.endereco ?? "-"}</td>
                         <td>{aluno.telefone}</td>
+                        <td>{STATUS_MATRICULA_LABELS[aluno.status]}</td>
                         <td className="admin-lista-acoes">
                             <AcoesContato telefone={aluno.telefone} enderecoResumo={aluno.endereco} />
+                            {aluno.status === "ATIVA" && (
+                                <button
+                                    type="button"
+                                    className="botao-secundario"
+                                    disabled={removendoId === aluno.matriculaId}
+                                    onClick={() => onRemover(aluno.matriculaId)}
+                                >
+                                    {removendoId === aluno.matriculaId ? "Removendo..." : "Remover da turma"}
+                                </button>
+                            )}
                         </td>
                     </tr>
                 ))}

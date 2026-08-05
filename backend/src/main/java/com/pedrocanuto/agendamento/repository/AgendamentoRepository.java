@@ -7,7 +7,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
 
 public interface AgendamentoRepository extends JpaRepository<Agendamento, Long> {
 
@@ -35,18 +34,4 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long> 
 
     /** Usado para checar conflito de horário (com folga de duração) na agenda do professor - ver AgendamentoService#validarDisponibilidade. */
     List<Agendamento> findByDataAndStatusNot(LocalDate data, EStatusAgendamento status);
-
-    /**
-     * Base do roster "alunos por turma" (ver TurmaService#listarComAlunos): todo agendamento
-     * nascido de uma inscrição em Turma tem turma+aluno+matrícula preenchidos (nunca é EVENTO -
-     * ver TurmaService#criar). Um único SELECT com JOIN FETCH em vez de 1 query por turma evita
-     * N+1 ao montar a listagem inteira.
-     */
-    @Query("SELECT DISTINCT a FROM Agendamento a " +
-            "JOIN FETCH a.turma " +
-            "JOIN FETCH a.aluno al " +
-            "JOIN FETCH al.responsavel c " +
-            "LEFT JOIN FETCH c.enderecos " +
-            "WHERE a.turma IS NOT NULL")
-    List<Agendamento> listarComTurmaEAluno();
 }

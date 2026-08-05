@@ -22,7 +22,6 @@ import com.pedrocanuto.agendamento.domain.PrecoServico;
 import com.pedrocanuto.agendamento.domain.Turma;
 import com.pedrocanuto.agendamento.domain.enums.ECategoriaServico;
 import com.pedrocanuto.agendamento.domain.enums.EInstrumento;
-import com.pedrocanuto.agendamento.domain.enums.EModalidadeServico;
 import com.pedrocanuto.agendamento.domain.enums.EStatusAgendamento;
 import com.pedrocanuto.agendamento.domain.enums.EStatusMatricula;
 import com.pedrocanuto.agendamento.domain.enums.EStatusTurma;
@@ -129,7 +128,7 @@ public class AgendamentoService {
         validarDisponibilidade(dto.data(), dto.hora(), precoServico.getDuracaoPadraoMinutos());
         Cliente cliente = clienteService.buscarOuCriar(dto.cliente());
         Agendamento agendamento = criarAgendamentoDeAula(cliente, dto.aluno(), precoServico,
-                dto.tipoContratacao(), dto.instrumento(), dto.data(), dto.hora(), null, null, dto.observacoes());
+                dto.tipoContratacao(), dto.instrumento(), dto.data(), dto.hora(), null, dto.observacoes());
         if (dto.categoria() == ECategoriaServico.MUSICOTERAPIA) {
             anamneseService.criarSeAusente(agendamento.getAluno(), dto.anamnese());
         }
@@ -147,7 +146,7 @@ public class AgendamentoService {
                                                                 List<GeradorDeDatasRecorrentes.AgendaSlot> slots) {
         GeradorDeDatasRecorrentes.AgendaSlot primeiroSlot = slots.get(0);
         Agendamento primeiro = criarAgendamentoDeAula(cliente, dto.aluno(), precoServico,
-                dto.tipoContratacao(), dto.instrumento(), primeiroSlot.data(), primeiroSlot.hora(), null, null, dto.observacoes());
+                dto.tipoContratacao(), dto.instrumento(), primeiroSlot.data(), primeiroSlot.hora(), null, dto.observacoes());
 
         List<Agendamento> agendamentos = new ArrayList<>(slots.size());
         agendamentos.add(primeiro);
@@ -158,40 +157,6 @@ public class AgendamentoService {
 
         if (dto.categoria() == ECategoriaServico.MUSICOTERAPIA) {
             anamneseService.criarSeAusente(primeiro.getAluno(), dto.anamnese());
-        }
-
-        List<AgendamentoResponseDTO> respostas = new ArrayList<>(agendamentos.size());
-        for (Agendamento agendamento : agendamentos) {
-            respostas.add(agendamentoMapper.toResponseDTO(agendamento));
-        }
-        return new AgendamentoCriadoResponseDTO(primeiro.getMatricula().getId(), respostas);
-    }
-
-    /**
-     * Inscrição de uma família numa Turma (ver TurmaService): gera todas as datas do pacote a
-     * partir do dia da semana/horário fixados na Turma (não escolhidos pela família, ao contrário
-     * do pacote individual em {@link #criar}) usando a mesma {@link GeradorDeDatasRecorrentes},
-     * e cria um Agendamento por aula contra uma única Matricula. Turma é aula em GRUPO - várias
-     * famílias podem ocupar o mesmo slot, então (diferente de {@link #criar}) não há checagem de
-     * disponibilidade aqui.
-     */
-    AgendamentoCriadoResponseDTO criarInscricaoTurma(Cliente cliente, AlunoSelecaoRequestDTO alunoSelecao, Turma turma,
-                                                      ETipoContratacao tipoContratacao, String observacoes) {
-        PrecoServico precoServico =
-                precoServicoService.buscarPorCategoriaModalidadeEPacote(turma.getCategoria(), EModalidadeServico.GRUPO, tipoContratacao);
-        List<HorarioRecorrenteRequestDTO> recorrencia = List.of(new HorarioRecorrenteRequestDTO(turma.getDiaSemana(), turma.getHora()));
-        List<GeradorDeDatasRecorrentes.AgendaSlot> slots =
-                GeradorDeDatasRecorrentes.gerar(recorrencia, tipoContratacao.getQuantidadeAulas(), LocalDate.now());
-
-        GeradorDeDatasRecorrentes.AgendaSlot primeiroSlot = slots.get(0);
-        Agendamento primeiro = criarAgendamentoDeAula(cliente, alunoSelecao, precoServico,
-                tipoContratacao, turma.getInstrumento(), primeiroSlot.data(), primeiroSlot.hora(), turma.getLocal(), turma, observacoes);
-
-        List<Agendamento> agendamentos = new ArrayList<>(slots.size());
-        agendamentos.add(primeiro);
-        for (GeradorDeDatasRecorrentes.AgendaSlot slot : slots.subList(1, slots.size())) {
-            agendamentos.add(criarAgendamentoIndividual(cliente, primeiro.getAluno(), primeiro.getMatricula(), precoServico,
-                    turma.getInstrumento(), slot.data(), slot.hora(), turma.getLocal(), turma, valorPorAula(primeiro.getMatricula()), observacoes));
         }
 
         List<AgendamentoResponseDTO> respostas = new ArrayList<>(agendamentos.size());
@@ -221,10 +186,10 @@ public class AgendamentoService {
      */
     Agendamento criarAgendamentoDeAula(Cliente cliente, AlunoSelecaoRequestDTO alunoSelecao, PrecoServico precoServico,
                                         ETipoContratacao tipoContratacao, EInstrumento instrumento,
-                                        LocalDate data, LocalTime hora, String local, Turma turma, String observacoes) {
+                                        LocalDate data, LocalTime hora, String local, String observacoes) {
         Aluno aluno = alunoService.buscarOuCriarParaResponsavel(cliente, alunoSelecao);
-        Matricula matricula = matriculaService.criar(cliente, aluno, precoServico, tipoContratacao, instrumento);
-        return criarAgendamentoIndividual(cliente, aluno, matricula, precoServico, instrumento, data, hora, local, turma,
+        Matricula matricula = matriculaService.criar(cliente, aluno, precoServico, tipoContratacao, instrumento, null);
+        return criarAgendamentoIndividual(cliente, aluno, matricula, precoServico, instrumento, data, hora, local, null,
                 valorPorAula(matricula), observacoes);
     }
 
@@ -314,7 +279,7 @@ public class AgendamentoService {
         slots.forEach(slot -> validarDisponibilidade(slot.data(), slot.hora(), precoServico.getDuracaoPadraoMinutos()));
 
         Matricula novaMatricula = matriculaService.criar(matriculaAtual.getCliente(), matriculaAtual.getAluno(),
-                precoServico, ETipoContratacao.PACOTE_4, matriculaAtual.getInstrumento());
+                precoServico, ETipoContratacao.PACOTE_4, matriculaAtual.getInstrumento(), null);
 
         String observacoes = "Renovação automática da recorrência da matrícula #%d".formatted(matriculaId);
         List<AgendamentoResponseDTO> respostas = new ArrayList<>(slots.size());

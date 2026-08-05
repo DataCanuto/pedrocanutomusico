@@ -1,8 +1,9 @@
 import { api } from "./api";
-import type { AgendamentoCriadoResponse, AgendamentoResponse } from "../types/domain";
+import type { AgendamentoCriadoResponse, AgendamentoResponse, CompromissoResponse } from "../types/domain";
 
-export async function listarAgendamentosAdmin(adminKey: string): Promise<AgendamentoResponse[]> {
-    const { data } = await api.get<AgendamentoResponse[]>("/admin/agendamentos", {
+/** Agendamentos individuais/evento + ocorrências de Turma juntos - ver AgendaAdminService (backend). */
+export async function listarAgendaAdmin(adminKey: string): Promise<CompromissoResponse[]> {
+    const { data } = await api.get<CompromissoResponse[]>("/admin/agendamentos", {
         headers: { "X-Admin-Key": adminKey },
     });
     return data;

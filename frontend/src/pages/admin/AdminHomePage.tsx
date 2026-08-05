@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { AdminGate } from "../../components/admin/AdminGate";
-import { listarAgendamentosAdmin } from "../../services/agendamentoAdminService";
+import { listarAgendaAdmin } from "../../services/agendamentoAdminService";
+import { statusDoCompromisso } from "../../utils/compromisso";
 
 const ACOES = [
     { to: "/admin/turmas", titulo: "Cadastrar turma", descricao: "Abre uma nova turma de aula em grupo e gera o código para compartilhar." },
@@ -22,17 +23,17 @@ export function AdminHomePage() {
 }
 
 /**
- * A contagem de "AGENDADO" reaproveita a mesma queryKey ["admin-agendamentos"] usada pela
- * página de Agenda - assim o hub avisa quantos agendamentos ainda não foram confirmados sem
+ * A contagem de "AGENDADO" reaproveita a mesma queryKey ["admin-agenda"] usada pela
+ * página de Agenda - assim o hub avisa quantos compromissos ainda não foram confirmados sem
  * precisar de um endpoint novo, e o cache já fica quente quando o professor entra na agenda.
  */
 function PainelAcoes({ adminKey }: { adminKey: string }) {
-    const agendamentosQuery = useQuery({
-        queryKey: ["admin-agendamentos"],
-        queryFn: () => listarAgendamentosAdmin(adminKey),
+    const agendaQuery = useQuery({
+        queryKey: ["admin-agenda"],
+        queryFn: () => listarAgendaAdmin(adminKey),
     });
 
-    const pendentes = agendamentosQuery.data?.filter((a) => a.status === "AGENDADO").length ?? 0;
+    const pendentes = agendaQuery.data?.filter((c) => statusDoCompromisso(c) === "AGENDADO").length ?? 0;
 
     return (
         <div className="admin-hub">

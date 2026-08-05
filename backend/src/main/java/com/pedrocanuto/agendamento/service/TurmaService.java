@@ -1,24 +1,26 @@
 package com.pedrocanuto.agendamento.service;
 
-import com.pedrocanuto.agendamento.domain.Agendamento;
 import com.pedrocanuto.agendamento.domain.Aluno;
 import com.pedrocanuto.agendamento.domain.Cliente;
+import com.pedrocanuto.agendamento.domain.Matricula;
+import com.pedrocanuto.agendamento.domain.PrecoServico;
 import com.pedrocanuto.agendamento.domain.Turma;
 import com.pedrocanuto.agendamento.domain.enums.ECategoriaServico;
+import com.pedrocanuto.agendamento.domain.enums.EModalidadeServico;
 import com.pedrocanuto.agendamento.domain.enums.EStatusTurma;
 import com.pedrocanuto.agendamento.dto.request.ClienteRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.EnderecoRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.InscricaoTurmaRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.TurmaRequestDTO;
-import com.pedrocanuto.agendamento.dto.response.AgendamentoCriadoResponseDTO;
-import com.pedrocanuto.agendamento.dto.response.AlunoDaTurmaResponseDTO;
+import com.pedrocanuto.agendamento.dto.response.InscricaoTurmaResponseDTO;
+import com.pedrocanuto.agendamento.dto.response.MatriculaResponseDTO;
 import com.pedrocanuto.agendamento.dto.response.TurmaComAlunosResponseDTO;
 import com.pedrocanuto.agendamento.dto.response.TurmaResponseDTO;
 import com.pedrocanuto.agendamento.exception.RecursoNaoEncontradoException;
 import com.pedrocanuto.agendamento.exception.RegraDeNegocioException;
 import com.pedrocanuto.agendamento.mapper.EnderecoFormatter;
 import com.pedrocanuto.agendamento.mapper.TurmaMapper;
-import com.pedrocanuto.agendamento.repository.AgendamentoRepository;
+import com.pedrocanuto.agendamento.repository.MatriculaRepository;
 import com.pedrocanuto.agendamento.repository.TurmaRepository;
 import com.pedrocanuto.agendamento.service.validation.AgendamentoValidator;
 import java.security.SecureRandom;
@@ -31,9 +33,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Turma: horário recorrente de aula em grupo com um código curto que as famílias usam para
- * matricular seus alunos. Cada família recebe sua própria Matricula e uma sequência de
- * Agendamentos (um por aula do pacote escolhido, gerados a partir do dia da semana/horário
- * fixados na Turma) - reaproveita {@link AgendamentoService#criarInscricaoTurma}.
+ * matricular seus alunos. Matricular um aluno numa Turma só registra o vínculo aluno<->turma
+ * (via {@link Matricula#getTurma()}) - não gera {@code Agendamento} datado por aula (a aula da
+ * turma em si é representada como compromisso único na agenda por {@code TurmaOcorrencia}, ver
+ * {@code TurmaOcorrenciaService}/{@code AgendaAdminService}).
  */
 @Service
 @Transactional
@@ -44,19 +47,25 @@ public class TurmaService {
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final TurmaRepository turmaRepository;
-    private final AgendamentoRepository agendamentoRepository;
+    private final MatriculaRepository matriculaRepository;
     private final TurmaMapper turmaMapper;
     private final ClienteService clienteService;
+    private final AlunoService alunoService;
+    private final PrecoServicoService precoServicoService;
+    private final MatriculaService matriculaService;
     private final AgendamentoService agendamentoService;
     private final AgendamentoValidator validator;
 
-    public TurmaService(TurmaRepository turmaRepository, AgendamentoRepository agendamentoRepository,
-                         TurmaMapper turmaMapper, ClienteService clienteService,
-                         AgendamentoService agendamentoService, AgendamentoValidator validator) {
+    public TurmaService(TurmaRepository turmaRepository, MatriculaRepository matriculaRepository, TurmaMapper turmaMapper,
+                         ClienteService clienteService, AlunoService alunoService, PrecoServicoService precoServicoService,
+                         MatriculaService matriculaService, AgendamentoService agendamentoService, AgendamentoValidator validator) {
         this.turmaRepository = turmaRepository;
-        this.agendamentoRepository = agendamentoRepository;
+        this.matriculaRepository = matriculaRepository;
         this.turmaMapper = turmaMapper;
         this.clienteService = clienteService;
+        this.alunoService = alunoService;
+        this.precoServicoService = precoServicoService;
+        this.matriculaService = matriculaService;
         this.agendamentoService = agendamentoService;
         this.validator = validator;
     }
@@ -108,36 +117,40 @@ public class TurmaService {
     }
 
     /**
-     * Painel "ver turmas" (Q_verTurmas): cada turma com os alunos matriculados nela. Turma não
-     * tem ligação direta com Cliente/Aluno - o vínculo existe só via Agendamento#turma, e como
-     * cada pacote gera uma aula por semana (vários Agendamentos por matrícula), o mesmo aluno
-     * aparece várias vezes ali e precisa ser deduplicado por aluno.id. Ordenado por dia da semana
+     * Painel "ver turmas" (Q_verTurmas): cada turma com os alunos matriculados nela - vindos de
+     * {@link Matricula#getTurma()}, mostrando ativo E inativo (aluno que saiu, sem sumir do
+     * histórico). Quando o mesmo aluno tem mais de uma matrícula na mesma turma (reingresso após
+     * sair), só a mais recente (por dataContratacao) é exibida. Ordenado por dia da semana
      * (segunda a domingo) e depois hora - feito em Java, não em SQL: diaSemana é
      * {@code @Enumerated(STRING)}, então um ORDER BY no banco ordenaria alfabeticamente
      * (FRIDAY antes de MONDAY), não pela semana real.
      */
     @Transactional(readOnly = true)
     public List<TurmaComAlunosResponseDTO> listarComAlunos() {
-        Map<Long, List<Aluno>> alunosPorTurma = agruparAlunosUnicosPorTurma();
+        Map<Long, List<Matricula>> matriculasPorTurma = agruparMatriculaMaisRecentePorAlunoPorTurma();
         return turmaRepository.findAll().stream()
                 .sorted(Comparator.comparing(Turma::getDiaSemana).thenComparing(Turma::getHora))
-                .map(turma -> paraTurmaComAlunos(turma, alunosPorTurma.getOrDefault(turma.getId(), List.of())))
+                .map(turma -> paraTurmaComAlunos(turma, matriculasPorTurma.getOrDefault(turma.getId(), List.of())))
                 .toList();
     }
 
-    private Map<Long, List<Aluno>> agruparAlunosUnicosPorTurma() {
-        Map<Long, Map<Long, Aluno>> alunosUnicosPorTurma = new LinkedHashMap<>();
-        for (Agendamento agendamento : agendamentoRepository.listarComTurmaEAluno()) {
-            Long turmaId = agendamento.getTurma().getId();
-            Aluno aluno = agendamento.getAluno();
-            alunosUnicosPorTurma.computeIfAbsent(turmaId, id -> new LinkedHashMap<>()).putIfAbsent(aluno.getId(), aluno);
+    private Map<Long, List<Matricula>> agruparMatriculaMaisRecentePorAlunoPorTurma() {
+        Map<Long, Map<Long, Matricula>> matriculaMaisRecentePorAlunoPorTurma = new LinkedHashMap<>();
+        for (Matricula matricula : matriculaRepository.listarComTurmaEAluno()) {
+            Long turmaId = matricula.getTurma().getId();
+            Long alunoId = matricula.getAluno().getId();
+            Map<Long, Matricula> porAluno = matriculaMaisRecentePorAlunoPorTurma.computeIfAbsent(turmaId, id -> new LinkedHashMap<>());
+            Matricula existente = porAluno.get(alunoId);
+            if (existente == null || matricula.getDataContratacao().isAfter(existente.getDataContratacao())) {
+                porAluno.put(alunoId, matricula);
+            }
         }
-        Map<Long, List<Aluno>> resultado = new LinkedHashMap<>();
-        alunosUnicosPorTurma.forEach((turmaId, alunos) -> resultado.put(turmaId, List.copyOf(alunos.values())));
+        Map<Long, List<Matricula>> resultado = new LinkedHashMap<>();
+        matriculaMaisRecentePorAlunoPorTurma.forEach((turmaId, porAluno) -> resultado.put(turmaId, List.copyOf(porAluno.values())));
         return resultado;
     }
 
-    private TurmaComAlunosResponseDTO paraTurmaComAlunos(Turma turma, List<Aluno> alunos) {
+    private TurmaComAlunosResponseDTO paraTurmaComAlunos(Turma turma, List<Matricula> matriculas) {
         return new TurmaComAlunosResponseDTO(
                 turma.getId(),
                 turma.getCodigo(),
@@ -148,29 +161,36 @@ public class TurmaService {
                 turma.getLocal(),
                 turmaMapper.paraEnderecoDTO(turma),
                 turma.getStatus(),
-                alunos.stream().map(this::paraAlunoDaTurma).toList()
+                matriculas.stream().map(turmaMapper::paraAlunoDaTurma).toList()
         );
     }
 
-    private AlunoDaTurmaResponseDTO paraAlunoDaTurma(Aluno aluno) {
-        Cliente responsavel = aluno.getResponsavel();
-        return new AlunoDaTurmaResponseDTO(
-                aluno.getId(),
-                aluno.getNome(),
-                aluno.getIdade(),
-                EnderecoFormatter.resumoPrimeiroEndereco(responsavel.getEnderecos()),
-                responsavel.getTelefone()
-        );
-    }
-
-    public AgendamentoCriadoResponseDTO inscrever(String codigo, InscricaoTurmaRequestDTO dto) {
+    /**
+     * Registra o vínculo aluno<->turma (Matricula#turma) - não gera Agendamento datado por aula
+     * (diferente do pacote individual em AgendamentoService#criar). tipoContratacao continua
+     * decidindo o pacote/valor cobrado (referência de preço), mas não quantas datas gerar.
+     */
+    public InscricaoTurmaResponseDTO inscrever(String codigo, InscricaoTurmaRequestDTO dto) {
         Turma turma = buscarEntidadePorCodigo(codigo);
         if (turma.getStatus() != EStatusTurma.ATIVA) {
             throw new RegraDeNegocioException("Esta turma não está mais aceitando inscrições");
         }
 
         Cliente cliente = clienteService.buscarOuCriar(comEnderecoDaTurmaSeAusente(dto.cliente(), turma));
-        return agendamentoService.criarInscricaoTurma(cliente, dto.aluno(), turma, dto.tipoContratacao(), dto.observacoes());
+        Aluno aluno = alunoService.buscarOuCriarParaResponsavel(cliente, dto.aluno());
+        PrecoServico precoServico =
+                precoServicoService.buscarPorCategoriaModalidadeEPacote(turma.getCategoria(), EModalidadeServico.GRUPO, dto.tipoContratacao());
+        Matricula matricula = matriculaService.criar(cliente, aluno, precoServico, dto.tipoContratacao(), turma.getInstrumento(), turma);
+        return turmaMapper.toInscricaoResponseDTO(matricula, turma);
+    }
+
+    /** "Aluno saiu da turma": inativa a matrícula sem apagar histórico - a turma continua existindo para os demais. */
+    public MatriculaResponseDTO inativarMatricula(Long matriculaId) {
+        Matricula matricula = matriculaService.buscarPorId(matriculaId);
+        if (matricula.getTurma() == null) {
+            throw new RegraDeNegocioException("Esta matrícula não pertence a uma turma");
+        }
+        return matriculaService.inativar(matriculaId);
     }
 
     /**

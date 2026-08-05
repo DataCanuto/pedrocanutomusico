@@ -19,4 +19,7 @@ public interface TurmaRepository extends JpaRepository<Turma, Long> {
      * (status ATIVA), independentemente de já ter aluno matriculado.
      */
     List<Turma> findByDiaSemanaAndStatus(DayOfWeek diaSemana, EStatusTurma status);
+
+    /** Usado para gerar as ocorrências virtuais de turma na agenda (ver AgendaAdminService). */
+    List<Turma> findByStatus(EStatusTurma status);
 }
