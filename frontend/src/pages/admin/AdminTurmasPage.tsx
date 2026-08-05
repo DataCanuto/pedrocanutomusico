@@ -122,15 +122,17 @@ function CadastroDeTurma({ adminKey }: { adminKey: string }) {
                             </>
                         )}
 
-                        <label htmlFor="diaSemana">Dia da semana</label>
-                        <select id="diaSemana" value={diaSemana} onChange={(e) => setDiaSemana(e.target.value as EDiaSemana)} required>
-                            <option value="">Selecione...</option>
-                            {DIAS_SEMANA.map((dia) => (
-                                <option key={dia} value={dia}>
-                                    {DIA_SEMANA_LABELS[dia]}
-                                </option>
-                            ))}
-                        </select>
+                        <div className="campo-dia-semana">
+                            <label htmlFor="diaSemana">Dia da semana</label>
+                            <select id="diaSemana" value={diaSemana} onChange={(e) => setDiaSemana(e.target.value as EDiaSemana)} required>
+                                <option value="">Selecione...</option>
+                                {DIAS_SEMANA.map((dia) => (
+                                    <option key={dia} value={dia}>
+                                        {DIA_SEMANA_LABELS[dia]}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
                         <p className="aviso">
                             A turma acontece toda semana neste dia e horário. Cada família que se matricular recebe automaticamente
                             todas as aulas do pacote escolhido, geradas dentro de 31 dias corridos a partir da inscrição.

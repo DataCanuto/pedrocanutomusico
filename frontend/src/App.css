@@ -400,6 +400,17 @@
   flex-direction: column;
 }
 
+/*
+ * O campo "Dia da semana" fica ao lado da grade de horários (GradeDeHorarios) em
+ * .linha-recorrencia, e essa grade cresce em largura assim que os slots aparecem. Sem
+ * flex-shrink: 0 aqui, o flexbox espreme este campo para abrir espaço, desconfigurando o
+ * select. min-width garante espaço para o rótulo mais longo ("Segunda-feira").
+ */
+.campo-dia-semana {
+  flex: 0 0 auto;
+  min-width: 190px;
+}
+
 .preview-recorrencia {
   margin-top: 12px;
   padding: 12px;

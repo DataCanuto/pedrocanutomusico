@@ -193,7 +193,7 @@ function LinhaRecorrencia({
 
     return (
         <div className="linha-recorrencia">
-            <div>
+            <div className="campo-dia-semana">
                 <label htmlFor={`recorrencia-dia-${index}`}>Dia da semana</label>
                 <select id={`recorrencia-dia-${index}`} {...register(`recorrencias.${index}.diaSemana`, { required: "Selecione o dia" })}>
                     <option value="">Selecione...</option>

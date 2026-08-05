@@ -154,17 +154,17 @@ export const SERVICOS: Servico[] = [
     {
         slug: "roda-tambores",
         titulo: "Roda de Tambores",
-        icone: "",
+        icone: "🥁",
         resumo: "A Roda de Tambores é uma experiência coletiva que utiliza a percussão como instrumento de integração, expressão, criatividade e desenvolvimento humano.",
-        blocos: [            
+        blocos: [
             {
                 tipo: "paragrafo",
-                texto: "Meu Trabalho de Conclusão de Curso em Musicoterapia teve como tema a utilização da Roda de Tambores como <em>setting</em> musicoterapêutico, investigando seu potencial para favorecer processos de comunicação, vínculo, escuta, cooperação e bem-estar em diferentes contextos.",
+                texto: "Meu Trabalho de Conclusão de Curso em Musicoterapia teve como tema a utilização da Roda de Tambores como setting musicoterapêutico, investigando seu potencial para favorecer processos de comunicação, vínculo, escuta, cooperação e bem-estar em diferentes contextos.",
             },
             {
-                tipo:"paragrafo",
-                texto:"Minha relação com a capoeira. Movido pela curiosidade, aprofundei minha formação em ritmos afro-brasileiros por meio de aulas de percussão em Salvador. Ao longo desse percurso, estudei os fundamentos de diversos instrumentos e passei a realizar oficinas em grupos terapeuticos e aulas em estúdio."
-            }
+                tipo: "paragrafo",
+                texto: "Minha relação com a capoeira. Movido pela curiosidade, aprofundei minha formação em ritmos afro-brasileiros por meio de aulas de percussão em Salvador. Ao longo desse percurso, estudei os fundamentos de diversos instrumentos e passei a realizar oficinas em grupos terapeuticos e aulas em estúdio.",
+            },
         ],
     },
 ];

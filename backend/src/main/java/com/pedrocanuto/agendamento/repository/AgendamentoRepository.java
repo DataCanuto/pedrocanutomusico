@@ -24,11 +24,19 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long> 
     /** Usado para derivar a "categoria atual" do cliente na listagem admin (Q_categoria) - o agendamento mais recente vence. */
     Optional<Agendamento> findFirstByClienteIdOrderByDataHoraAgendamentoDesc(Long clienteId);
 
-    List<Agendamento> findByData(LocalDate data);
+    /**
+     * Usado por AgendamentoService#listar (agenda do admin). O filtro TurmaIsNull exclui
+     * Agendamento legado (turma_id preenchido, de antes da refatoração em V6__matricula_turma_e_turma_ocorrencia.sql)
+     * - hoje a Turma é representada na agenda por uma única TurmaOcorrencia, então reexibir aquelas
+     * linhas antigas duplicava o compromisso uma vez por aluno matriculado na época.
+     */
+    List<Agendamento> findByDataAndTurmaIsNull(LocalDate data);
 
-    List<Agendamento> findByCategoria(ECategoriaServico categoria);
+    List<Agendamento> findByCategoriaAndTurmaIsNull(ECategoriaServico categoria);
 
-    List<Agendamento> findByDataAndCategoria(LocalDate data, ECategoriaServico categoria);
+    List<Agendamento> findByDataAndCategoriaAndTurmaIsNull(LocalDate data, ECategoriaServico categoria);
+
+    List<Agendamento> findByTurmaIsNull();
 
     Optional<Agendamento> findByCodigoPublico(String codigoPublico);
 

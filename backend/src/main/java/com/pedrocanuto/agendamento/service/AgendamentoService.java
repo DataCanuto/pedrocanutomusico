@@ -380,17 +380,24 @@ public class AgendamentoService {
         return ocupados;
     }
 
+    /**
+     * Alimenta a agenda do admin (ver AgendaAdminService#listar), que representa uma Turma como um
+     * único compromisso (TurmaOcorrencia) independente de quantos alunos estão matriculados nela -
+     * por isso só retorna Agendamento com turma == null; Agendamento legado com turma_id preenchido
+     * (matrícula feita antes da refatoração em V6__matricula_turma_e_turma_ocorrencia.sql) fica de
+     * fora para não duplicar o compromisso da turma uma vez por aluno.
+     */
     @Transactional(readOnly = true)
     public List<AgendamentoResponseDTO> listar(LocalDate data, ECategoriaServico categoria) {
         List<Agendamento> agendamentos;
         if (data != null && categoria != null) {
-            agendamentos = agendamentoRepository.findByDataAndCategoria(data, categoria);
+            agendamentos = agendamentoRepository.findByDataAndCategoriaAndTurmaIsNull(data, categoria);
         } else if (data != null) {
-            agendamentos = agendamentoRepository.findByData(data);
+            agendamentos = agendamentoRepository.findByDataAndTurmaIsNull(data);
         } else if (categoria != null) {
-            agendamentos = agendamentoRepository.findByCategoria(categoria);
+            agendamentos = agendamentoRepository.findByCategoriaAndTurmaIsNull(categoria);
         } else {
-            agendamentos = agendamentoRepository.findAll();
+            agendamentos = agendamentoRepository.findByTurmaIsNull();
         }
         return agendamentos.stream().map(agendamentoMapper::toResponseDTO).toList();
     }
