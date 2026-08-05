@@ -10,6 +10,7 @@ import {
     transicionarStatusAdmin,
     type AcaoDeStatus,
 } from "../../services/agendamentoAdminService";
+import { confirmarRecorrenciaDaTurma } from "../../services/turmaService";
 import { transicionarStatusTurmaOcorrenciaAdmin, type AcaoDeStatusTurma } from "../../services/turmaOcorrenciaAdminService";
 import { extrairMensagemErro } from "../../services/api";
 import { CATEGORIA_LABELS, INSTRUMENTO_LABELS, STATUS_AGENDAMENTO_LABELS } from "../../types/labels";
@@ -120,6 +121,11 @@ function Agenda({ adminKey }: { adminKey: string }) {
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-agenda"] }),
     });
 
+    const recorrenciaTurmaMutation = useMutation({
+        mutationFn: ({ turmaId }: { turmaId: number }) => confirmarRecorrenciaDaTurma(turmaId, adminKey),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-agenda"] }),
+    });
+
     const chavePendente = acaoMutation.isPending
         ? `ag-${acaoMutation.variables?.id}`
         : acaoTurmaMutation.isPending
@@ -128,13 +134,16 @@ function Agenda({ adminKey }: { adminKey: string }) {
             ? `ag-${orcamentoMutation.variables?.id}`
             : recorrenciaMutation.isPending
               ? `ag-${recorrenciaMutation.variables?.agendamentoId}`
-              : null;
+              : recorrenciaTurmaMutation.isPending
+                ? `turma-recorrencia-${recorrenciaTurmaMutation.variables?.turmaId}`
+                : null;
 
     const acoes: AcoesAgendamento = {
         onAcao: (id, acao) => acaoMutation.mutate({ id, acao }),
         onAcaoTurma: (turmaId, data, acao) => acaoTurmaMutation.mutate({ turmaId, data, acao }),
         onDefinirOrcamento: (id, valor) => orcamentoMutation.mutate({ id, valor }),
         onConfirmarRecorrencia: (matriculaId, agendamentoId) => recorrenciaMutation.mutate({ matriculaId, agendamentoId }),
+        onConfirmarRecorrenciaTurma: (turmaId) => recorrenciaTurmaMutation.mutate({ turmaId }),
         chavePendente,
         erro: acaoMutation.isError
             ? extrairMensagemErro(acaoMutation.error, "Não foi possível atualizar o status.")
@@ -144,7 +153,9 @@ function Agenda({ adminKey }: { adminKey: string }) {
                 ? extrairMensagemErro(orcamentoMutation.error, "Não foi possível definir o orçamento.")
                 : recorrenciaMutation.isError
                   ? extrairMensagemErro(recorrenciaMutation.error, "Não foi possível confirmar a recorrência.")
-                  : null,
+                  : recorrenciaTurmaMutation.isError
+                    ? extrairMensagemErro(recorrenciaTurmaMutation.error, "Não foi possível confirmar a recorrência da turma.")
+                    : null,
     };
 
     const porDia = useMemo(() => {
@@ -215,6 +226,7 @@ interface AcoesAgendamento {
     onAcaoTurma: (turmaId: number, data: string, acao: AcaoDeStatusTurma) => void;
     onDefinirOrcamento: (id: number, valor: number) => void;
     onConfirmarRecorrencia: (matriculaId: number, agendamentoId: number) => void;
+    onConfirmarRecorrenciaTurma: (turmaId: number) => void;
     chavePendente: string | null;
     erro: string | null;
 }
@@ -280,6 +292,7 @@ function LinhaAgendamento({ agendamento, acoes }: { agendamento: AgendamentoResp
 
 function LinhaTurmaOcorrencia({ ocorrencia, acoes }: { ocorrencia: TurmaOcorrenciaResponse; acoes: AcoesAgendamento }) {
     const pendente = acoes.chavePendente === `turma-${ocorrencia.turmaId}-${ocorrencia.data}`;
+    const pendenteRecorrencia = acoes.chavePendente === `turma-recorrencia-${ocorrencia.turmaId}`;
     const acoesDisponiveis = ACOES_TURMA_POR_STATUS[ocorrencia.status];
     const servico = ocorrencia.instrumento
         ? `${CATEGORIA_LABELS[ocorrencia.categoria]} - ${INSTRUMENTO_LABELS[ocorrencia.instrumento]}`
@@ -291,18 +304,6 @@ function LinhaTurmaOcorrencia({ ocorrencia, acoes }: { ocorrencia: TurmaOcorrenc
     return (
         <li className={ocorrencia.status === "CANCELADO" ? "agenda-item-cancelado" : undefined}>
             <AccordionItem titulo={titulo} subtitulo={subtitulo}>
-                {ocorrencia.alunosAtivos.length === 0 ? (
-                    <p>Nenhum aluno ativo matriculado nesta turma ainda.</p>
-                ) : (
-                    <ul>
-                        {ocorrencia.alunosAtivos.map((aluno) => (
-                            <li key={aluno.id}>
-                                {aluno.nomeAluno} - {aluno.telefone}
-                                <AcoesContato telefone={aluno.telefone} enderecoResumo={aluno.endereco} />
-                            </li>
-                        ))}
-                    </ul>
-                )}
                 <div className="agenda-acoes">
                     {acoesDisponiveis.map(({ acao, label }) => (
                         <button
@@ -314,6 +315,13 @@ function LinhaTurmaOcorrencia({ ocorrencia, acoes }: { ocorrencia: TurmaOcorrenc
                             {label}
                         </button>
                     ))}
+                    <button
+                        type="button"
+                        disabled={pendenteRecorrencia}
+                        onClick={() => acoes.onConfirmarRecorrenciaTurma(ocorrencia.turmaId)}
+                    >
+                        Confirmar recorrência (todos os alunos)
+                    </button>
                 </div>
             </AccordionItem>
         </li>

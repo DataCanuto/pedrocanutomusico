@@ -6,7 +6,12 @@ import { AccordionItem } from "../../components/ui/Accordion";
 import { BotaoCopiar } from "../../components/ui/BotaoCopiar";
 import { extrairMensagemErro } from "../../services/api";
 import { buscarEnderecoPorCep } from "../../services/cepService";
-import { atualizarEnderecoTurma, inativarMatriculaTurma, listarTurmasComAlunos } from "../../services/turmaService";
+import {
+    atualizarEnderecoTurma,
+    confirmarRecorrenciaMatriculaTurma,
+    inativarMatriculaTurma,
+    listarTurmasComAlunos,
+} from "../../services/turmaService";
 import { CATEGORIA_LABELS, DIA_SEMANA_LABELS, INSTRUMENTO_LABELS, STATUS_MATRICULA_LABELS } from "../../types/labels";
 import type { AlunoDaTurma, EnderecoRequest, TurmaComAlunos } from "../../types/domain";
 
@@ -24,6 +29,7 @@ function ListaDeTurmas({ adminKey }: { adminKey: string }) {
     const turmasQuery = useQuery({ queryKey: ["admin-turmas"], queryFn: () => listarTurmasComAlunos(adminKey) });
     const queryClient = useQueryClient();
     const [erroRemocao, setErroRemocao] = useState<string | null>(null);
+    const [erroRecorrencia, setErroRecorrencia] = useState<string | null>(null);
 
     const inativarMutation = useMutation({
         mutationFn: (matriculaId: number) => inativarMatriculaTurma(matriculaId, adminKey),
@@ -34,6 +40,15 @@ function ListaDeTurmas({ adminKey }: { adminKey: string }) {
         onError: (e) => setErroRemocao(extrairMensagemErro(e, "Não foi possível remover o aluno da turma.")),
     });
 
+    const recorrenciaMutation = useMutation({
+        mutationFn: (matriculaId: number) => confirmarRecorrenciaMatriculaTurma(matriculaId, adminKey),
+        onSuccess: () => {
+            setErroRecorrencia(null);
+            queryClient.invalidateQueries({ queryKey: ["admin-turmas"] });
+        },
+        onError: (e) => setErroRecorrencia(extrairMensagemErro(e, "Não foi possível confirmar a recorrência.")),
+    });
+
     return (
         <>
             {turmasQuery.isLoading && <p>Carregando...</p>}
@@ -41,6 +56,7 @@ function ListaDeTurmas({ adminKey }: { adminKey: string }) {
                 <p className="erro-campo">{extrairMensagemErro(turmasQuery.error, "Não foi possível carregar as turmas.")}</p>
             )}
             {erroRemocao && <p className="erro-campo">{erroRemocao}</p>}
+            {erroRecorrencia && <p className="erro-campo">{erroRecorrencia}</p>}
             {turmasQuery.data && turmasQuery.data.length === 0 && <p>Nenhuma turma cadastrada ainda.</p>}
 
             {turmasQuery.data && turmasQuery.data.length > 0 && (
@@ -56,6 +72,8 @@ function ListaDeTurmas({ adminKey }: { adminKey: string }) {
                                 turma={turma}
                                 onRemover={(matriculaId) => inativarMutation.mutate(matriculaId)}
                                 removendoId={inativarMutation.isPending ? (inativarMutation.variables ?? null) : null}
+                                onConfirmarRecorrencia={(matriculaId) => recorrenciaMutation.mutate(matriculaId)}
+                                confirmandoId={recorrenciaMutation.isPending ? (recorrenciaMutation.variables ?? null) : null}
                             />
                         </AccordionItem>
                     ))}
@@ -229,10 +247,14 @@ function TabelaDeAlunos({
     turma,
     onRemover,
     removendoId,
+    onConfirmarRecorrencia,
+    confirmandoId,
 }: {
     turma: TurmaComAlunos;
     onRemover: (matriculaId: number) => void;
     removendoId: number | null;
+    onConfirmarRecorrencia: (matriculaId: number) => void;
+    confirmandoId: number | null;
 }) {
     if (turma.alunos.length === 0) {
         return <p>Nenhum aluno matriculado nesta turma ainda.</p>;
@@ -261,14 +283,23 @@ function TabelaDeAlunos({
                         <td className="admin-lista-acoes">
                             <AcoesContato telefone={aluno.telefone} enderecoResumo={aluno.endereco} />
                             {aluno.status === "ATIVA" && (
-                                <button
-                                    type="button"
-                                    className="botao-secundario"
-                                    disabled={removendoId === aluno.matriculaId}
-                                    onClick={() => onRemover(aluno.matriculaId)}
-                                >
-                                    {removendoId === aluno.matriculaId ? "Removendo..." : "Remover da turma"}
-                                </button>
+                                <>
+                                    <button
+                                        type="button"
+                                        disabled={confirmandoId === aluno.matriculaId}
+                                        onClick={() => onConfirmarRecorrencia(aluno.matriculaId)}
+                                    >
+                                        {confirmandoId === aluno.matriculaId ? "Confirmando..." : "Confirmar recorrência"}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="botao-secundario"
+                                        disabled={removendoId === aluno.matriculaId}
+                                        onClick={() => onRemover(aluno.matriculaId)}
+                                    >
+                                        {removendoId === aluno.matriculaId ? "Removendo..." : "Remover da turma"}
+                                    </button>
+                                </>
                             )}
                         </td>
                     </tr>

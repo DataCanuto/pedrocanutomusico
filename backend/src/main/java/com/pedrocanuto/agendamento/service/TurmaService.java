@@ -7,6 +7,7 @@ import com.pedrocanuto.agendamento.domain.PrecoServico;
 import com.pedrocanuto.agendamento.domain.Turma;
 import com.pedrocanuto.agendamento.domain.enums.ECategoriaServico;
 import com.pedrocanuto.agendamento.domain.enums.EModalidadeServico;
+import com.pedrocanuto.agendamento.domain.enums.EStatusMatricula;
 import com.pedrocanuto.agendamento.domain.enums.EStatusTurma;
 import com.pedrocanuto.agendamento.dto.request.ClienteRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.EnderecoRequestDTO;
@@ -103,8 +104,7 @@ public class TurmaService {
      * estruturado que tenha sido cadastrado errado.
      */
     public TurmaResponseDTO atualizarEndereco(Long id, EnderecoRequestDTO dto) {
-        Turma turma = turmaRepository.findById(id)
-                .orElseThrow(() -> RecursoNaoEncontradoException.paraId("Turma", id));
+        Turma turma = buscarEntidadePorId(id);
         turma.setEnderecoCep(dto.cep());
         turma.setEnderecoRua(dto.rua());
         turma.setEnderecoNumero(dto.numero());
@@ -191,6 +191,53 @@ public class TurmaService {
             throw new RegraDeNegocioException("Esta matrícula não pertence a uma turma");
         }
         return matriculaService.inativar(matriculaId);
+    }
+
+    /**
+     * Renova o ciclo de UMA matrícula de turma: cria uma NOVA Matricula com os mesmos
+     * cliente/aluno/precoServico/tipoContratacao/instrumento/turma da atual (dataContratacao =
+     * agora), sem tocar na antiga - mesmo padrão de {@link AgendamentoService#confirmarRecorrencia},
+     * mas sem gerar Agendamento datado (matrícula de turma nunca gera - ver {@link #inscrever}):
+     * a turma já tem dia/hora fixos, não há "aulas restantes" nem última aula de onde inferir isso.
+     */
+    public MatriculaResponseDTO confirmarRecorrencia(Long matriculaId) {
+        Matricula matriculaAtual = matriculaService.buscarPorId(matriculaId);
+        if (matriculaAtual.getTurma() == null) {
+            throw new RegraDeNegocioException("Esta matrícula não pertence a uma turma");
+        }
+        if (matriculaAtual.getStatus() != EStatusMatricula.ATIVA) {
+            throw new RegraDeNegocioException("Matrícula não está ativa");
+        }
+        if (matriculaAtual.getTurma().getStatus() != EStatusTurma.ATIVA) {
+            throw new RegraDeNegocioException("Esta turma não está mais ativa");
+        }
+        return matriculaService.toResponseDTO(renovar(matriculaAtual));
+    }
+
+    /**
+     * "A turma é como se fosse um aluno individual" na agenda do admin: renova de uma vez o ciclo
+     * de todos os alunos hoje ATIVOS na turma, reaproveitando {@link #confirmarRecorrencia} por
+     * aluno. Turma sem nenhum aluno ativo não é erro - devolve lista vazia.
+     */
+    public List<MatriculaResponseDTO> confirmarRecorrenciaDaTurma(Long turmaId) {
+        Turma turma = buscarEntidadePorId(turmaId);
+        if (turma.getStatus() != EStatusTurma.ATIVA) {
+            throw new RegraDeNegocioException("Esta turma não está mais ativa");
+        }
+        return matriculaRepository.listarPorTurmaEStatus(turmaId, EStatusMatricula.ATIVA).stream()
+                .map(this::renovar)
+                .map(matriculaService::toResponseDTO)
+                .toList();
+    }
+
+    private Matricula renovar(Matricula matriculaAtual) {
+        return matriculaService.criar(matriculaAtual.getCliente(), matriculaAtual.getAluno(),
+                matriculaAtual.getPrecoServico(), matriculaAtual.getTipoContratacao(),
+                matriculaAtual.getInstrumento(), matriculaAtual.getTurma());
+    }
+
+    private Turma buscarEntidadePorId(Long id) {
+        return turmaRepository.findById(id).orElseThrow(() -> RecursoNaoEncontradoException.paraId("Turma", id));
     }
 
     /**

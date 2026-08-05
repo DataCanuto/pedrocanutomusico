@@ -49,3 +49,19 @@ export async function inativarMatriculaTurma(matriculaId: number, adminKey: stri
     });
     return data;
 }
+
+/** Renova o ciclo de UMA matrícula de turma - cria nova matrícula sem gerar aulas datadas (ver AdminVerTurmasPage). */
+export async function confirmarRecorrenciaMatriculaTurma(matriculaId: number, adminKey: string): Promise<MatriculaResponse> {
+    const { data } = await api.post<MatriculaResponse>(`/admin/turmas/matriculas/${matriculaId}/confirmar-recorrencia`, null, {
+        headers: { "X-Admin-Key": adminKey },
+    });
+    return data;
+}
+
+/** "A turma é como se fosse um aluno individual" - renova de uma vez todos os alunos ativos da turma (ver AdminAgendaPage). */
+export async function confirmarRecorrenciaDaTurma(turmaId: number, adminKey: string): Promise<MatriculaResponse[]> {
+    const { data } = await api.post<MatriculaResponse[]>(`/admin/turmas/${turmaId}/confirmar-recorrencia`, null, {
+        headers: { "X-Admin-Key": adminKey },
+    });
+    return data;
+}

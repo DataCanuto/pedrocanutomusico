@@ -53,4 +53,16 @@ public class TurmaAdminController {
     public MatriculaResponseDTO inativarMatricula(@PathVariable Long id) {
         return turmaService.inativarMatricula(id);
     }
+
+    /** Renova o ciclo de UMA matrícula de turma - cria nova Matricula, sem tocar na antiga (ver TurmaService#confirmarRecorrencia). */
+    @PostMapping("/matriculas/{id}/confirmar-recorrencia")
+    public ResponseEntity<MatriculaResponseDTO> confirmarRecorrenciaMatricula(@PathVariable Long id) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(turmaService.confirmarRecorrencia(id));
+    }
+
+    /** "A turma é como se fosse um aluno individual" na agenda - renova de uma vez todos os alunos ATIVOS da turma. */
+    @PostMapping("/{turmaId}/confirmar-recorrencia")
+    public ResponseEntity<List<MatriculaResponseDTO>> confirmarRecorrenciaDaTurma(@PathVariable Long turmaId) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(turmaService.confirmarRecorrenciaDaTurma(turmaId));
+    }
 }
