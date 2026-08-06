@@ -1,12 +1,16 @@
 package com.pedrocanuto.agendamento.controller.admin;
 
+import com.pedrocanuto.agendamento.dto.request.ReagendarRequestDTO;
 import com.pedrocanuto.agendamento.dto.response.TurmaOcorrenciaResponseDTO;
 import com.pedrocanuto.agendamento.service.TurmaOcorrenciaService;
+import jakarta.validation.Valid;
 import java.time.LocalDate;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.format.annotation.DateTimeFormat.ISO;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -49,5 +53,11 @@ public class TurmaOcorrenciaAdminController {
     @PostMapping("/{data}/cancelar")
     public TurmaOcorrenciaResponseDTO cancelar(@PathVariable Long turmaId, @PathVariable @DateTimeFormat(iso = ISO.DATE) LocalDate data) {
         return turmaOcorrenciaService.cancelar(turmaId, data);
+    }
+
+    @PutMapping("/{data}/reagendar")
+    public TurmaOcorrenciaResponseDTO reagendar(@PathVariable Long turmaId, @PathVariable @DateTimeFormat(iso = ISO.DATE) LocalDate data,
+                                                 @Valid @RequestBody ReagendarRequestDTO dto) {
+        return turmaOcorrenciaService.reagendar(turmaId, data, dto.data(), dto.hora());
     }
 }

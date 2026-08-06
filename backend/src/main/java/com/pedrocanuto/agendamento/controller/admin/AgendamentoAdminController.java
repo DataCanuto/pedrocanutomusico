@@ -1,10 +1,12 @@
 package com.pedrocanuto.agendamento.controller.admin;
 
 import com.pedrocanuto.agendamento.domain.enums.ECategoriaServico;
+import com.pedrocanuto.agendamento.dto.request.ReagendarRequestDTO;
 import com.pedrocanuto.agendamento.dto.response.AgendamentoResponseDTO;
 import com.pedrocanuto.agendamento.dto.response.CompromissoResponseDTO;
 import com.pedrocanuto.agendamento.service.AgendaAdminService;
 import com.pedrocanuto.agendamento.service.AgendamentoService;
+import jakarta.validation.Valid;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -82,5 +84,10 @@ public class AgendamentoAdminController {
     @PutMapping("/{id}/orcamento")
     public AgendamentoResponseDTO definirOrcamento(@PathVariable Long id, @RequestBody Map<String, BigDecimal> body) {
         return agendamentoService.definirOrcamento(id, body.get("valor"));
+    }
+
+    @PutMapping("/{id}/reagendar")
+    public AgendamentoResponseDTO reagendar(@PathVariable Long id, @Valid @RequestBody ReagendarRequestDTO dto) {
+        return agendamentoService.reagendar(id, dto.data(), dto.hora());
     }
 }

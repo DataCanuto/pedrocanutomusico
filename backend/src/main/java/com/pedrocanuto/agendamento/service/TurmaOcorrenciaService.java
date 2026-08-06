@@ -13,8 +13,10 @@ import com.pedrocanuto.agendamento.mapper.TurmaOcorrenciaMapper;
 import com.pedrocanuto.agendamento.repository.MatriculaRepository;
 import com.pedrocanuto.agendamento.repository.TurmaOcorrenciaRepository;
 import com.pedrocanuto.agendamento.repository.TurmaRepository;
+import com.pedrocanuto.agendamento.service.validation.AgendamentoValidator;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,16 +37,21 @@ public class TurmaOcorrenciaService {
     private final PrecoServicoService precoServicoService;
     private final TurmaMapper turmaMapper;
     private final TurmaOcorrenciaMapper turmaOcorrenciaMapper;
+    private final AgendamentoService agendamentoService;
+    private final AgendamentoValidator agendamentoValidator;
 
     public TurmaOcorrenciaService(TurmaOcorrenciaRepository turmaOcorrenciaRepository, TurmaRepository turmaRepository,
                                    MatriculaRepository matriculaRepository, PrecoServicoService precoServicoService,
-                                   TurmaMapper turmaMapper, TurmaOcorrenciaMapper turmaOcorrenciaMapper) {
+                                   TurmaMapper turmaMapper, TurmaOcorrenciaMapper turmaOcorrenciaMapper,
+                                   AgendamentoService agendamentoService, AgendamentoValidator agendamentoValidator) {
         this.turmaOcorrenciaRepository = turmaOcorrenciaRepository;
         this.turmaRepository = turmaRepository;
         this.matriculaRepository = matriculaRepository;
         this.precoServicoService = precoServicoService;
         this.turmaMapper = turmaMapper;
         this.turmaOcorrenciaMapper = turmaOcorrenciaMapper;
+        this.agendamentoService = agendamentoService;
+        this.agendamentoValidator = agendamentoValidator;
     }
 
     public TurmaOcorrenciaResponseDTO confirmar(Long turmaId, LocalDate data) {
@@ -69,6 +76,33 @@ public class TurmaOcorrenciaService {
 
     public TurmaOcorrenciaResponseDTO cancelar(Long turmaId, LocalDate data) {
         return paraResponseDTO(transicionar(turmaId, data, EStatusAgendamento.CANCELADO));
+    }
+
+    /**
+     * Move esta ocorrência (a turma só nesta semana específica) para nova data/hora, sem alterar o
+     * horário recorrente da Turma - turma.diaSemana/hora seguem intocados e as próximas semanas
+     * continuam normais. Guarda a data original em {@link TurmaOcorrencia#getDataOriginal()} na
+     * primeira vez (nunca sobrescreve num segundo reagendamento) só para AgendaAdminService não
+     * gerar uma ocorrência virtual fantasma no slot semanal que ficou vago.
+     */
+    public TurmaOcorrenciaResponseDTO reagendar(Long turmaId, LocalDate data, LocalDate novaData, LocalTime novaHora) {
+        TurmaOcorrencia ocorrencia = buscarOuMaterializar(turmaId, data);
+        if (ocorrencia.getStatus().isTerminal()) {
+            throw new RegraDeNegocioException("Não é possível reagendar uma ocorrência com status " + ocorrencia.getStatus());
+        }
+        if (!novaData.equals(ocorrencia.getData()) && turmaOcorrenciaRepository.findByTurmaIdAndData(turmaId, novaData).isPresent()) {
+            throw new RegraDeNegocioException("Esta turma já tem uma ocorrência marcada na data informada");
+        }
+        agendamentoValidator.validarHorario(novaHora);
+        Integer duracaoMinutos = precoServicoService.buscarDuracaoDeGrupo(ocorrencia.getTurma().getCategoria());
+        agendamentoService.validarDisponibilidadeExcluindo(novaData, novaHora, duracaoMinutos, null, turmaId);
+
+        if (ocorrencia.getDataOriginal() == null) {
+            ocorrencia.setDataOriginal(ocorrencia.getData());
+        }
+        ocorrencia.setData(novaData);
+        ocorrencia.setHora(novaHora);
+        return paraResponseDTO(ocorrencia);
     }
 
     private TurmaOcorrencia transicionar(Long turmaId, LocalDate data, EStatusAgendamento novoStatus) {

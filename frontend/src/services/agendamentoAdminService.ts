@@ -37,3 +37,13 @@ export async function confirmarRecorrenciaAdmin(matriculaId: number, adminKey: s
     );
     return data;
 }
+
+/** Move um Agendamento (aula individual ou evento) para nova data/hora - ver AgendamentoService#reagendar no backend. */
+export async function reagendarAdmin(id: number, data: string, hora: string, adminKey: string): Promise<AgendamentoResponse> {
+    const { data: resposta } = await api.put<AgendamentoResponse>(
+        `/admin/agendamentos/${id}/reagendar`,
+        { data, hora },
+        { headers: { "X-Admin-Key": adminKey } },
+    );
+    return resposta;
+}

@@ -14,7 +14,7 @@ public interface TurmaOcorrenciaMapper {
     @Mapping(target = "turmaCodigo", source = "ocorrencia.turma.codigo")
     @Mapping(target = "categoria", source = "ocorrencia.turma.categoria")
     @Mapping(target = "instrumento", source = "ocorrencia.turma.instrumento")
-    @Mapping(target = "hora", source = "ocorrencia.turma.hora")
+    @Mapping(target = "hora", expression = "java(ocorrencia.getHora() != null ? ocorrencia.getHora() : ocorrencia.getTurma().getHora())")
     @Mapping(target = "local", source = "ocorrencia.turma.local")
     @Mapping(target = "duracaoMinutos", source = "duracaoMinutos")
     @Mapping(target = "alunosAtivos", source = "alunosAtivos")

@@ -5,13 +5,13 @@ import { GradeDeHorarios } from "../ui/GradeDeHorarios";
 import { listarHorariosOcupados } from "../../services/agendamentoService";
 import type { EDiaSemana, ETipoContratacao, PrecoServico } from "../../types/domain";
 import { DIA_SEMANA_LABELS, QUANTIDADE_AULAS } from "../../types/labels";
+import { DIAS_SEMANA } from "../../utils/diasSemana";
 import { slotIndisponivel } from "../../utils/disponibilidade";
 import { gerarSlotsDeHorario } from "../../utils/horarios";
 import { cabeNaJanela, gerarPreviewDeDatas, proximaOcorrenciaISO } from "../../utils/recorrencia";
 import { ehPacoteRecorrente, resolverDuracaoMinutos, type AgendamentoFormValues } from "./formTypes";
 
 const SLOTS = gerarSlotsDeHorario();
-const DIAS_SEMANA = Object.keys(DIA_SEMANA_LABELS) as EDiaSemana[];
 const MAX_RECORRENCIAS = 3;
 
 export function HorarioFields({ precos }: { precos: PrecoServico[] }) {

@@ -77,6 +77,11 @@ public class AgendaAdminService {
         Set<String> chavesPersistidas = new HashSet<>();
         for (TurmaOcorrencia ocorrencia : persistidas) {
             chavesPersistidas.add(chave(ocorrencia.getTurma().getId(), ocorrencia.getData()));
+            // Ocorrência reagendada (ver TurmaOcorrenciaService#reagendar): o slot semanal natural que ela
+            // vagou também precisa ficar marcado, senão o loop abaixo gera um fantasma nele.
+            if (ocorrencia.getDataOriginal() != null) {
+                chavesPersistidas.add(chave(ocorrencia.getTurma().getId(), ocorrencia.getDataOriginal()));
+            }
         }
 
         List<TurmaOcorrencia> todas = new ArrayList<>(persistidas);

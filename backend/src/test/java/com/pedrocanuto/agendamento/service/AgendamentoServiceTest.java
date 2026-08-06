@@ -491,6 +491,88 @@ class AgendamentoServiceTest {
     }
 
     @Test
+    void reagendarAtualizaDataEHora() {
+        Agendamento agendamento = new Agendamento();
+        agendamento.setId(30L);
+        agendamento.setStatus(EStatusAgendamento.AGENDADO);
+        agendamento.setData(LocalDate.now().plusDays(3));
+        agendamento.setHora(LocalTime.of(15, 0));
+        agendamento.setDuracaoMinutos(50);
+        when(agendamentoRepository.findById(30L)).thenReturn(java.util.Optional.of(agendamento));
+        when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of());
+
+        LocalDate novaData = LocalDate.now().plusDays(10);
+        agendamentoService.reagendar(30L, novaData, LocalTime.of(9, 0));
+
+        assertThat(agendamento.getData()).isEqualTo(novaData);
+        assertThat(agendamento.getHora()).isEqualTo(LocalTime.of(9, 0));
+    }
+
+    @Test
+    void reagendarParaMesmaDataDiferenteHoraNaoSeAutoBloqueia() {
+        Agendamento agendamento = new Agendamento();
+        agendamento.setId(30L);
+        agendamento.setStatus(EStatusAgendamento.AGENDADO);
+        LocalDate data = LocalDate.now().plusDays(3);
+        agendamento.setData(data);
+        agendamento.setHora(LocalTime.of(15, 0));
+        agendamento.setDuracaoMinutos(50);
+        when(agendamentoRepository.findById(30L)).thenReturn(java.util.Optional.of(agendamento));
+        // A própria query de conflito ainda devolve o agendamento (ele só é mutado depois da validação) -
+        // o filtro por id que exclui a si mesmo é o que garante que isto não vira um falso conflito.
+        when(agendamentoRepository.findByDataAndStatusNot(data, EStatusAgendamento.CANCELADO)).thenReturn(List.of(agendamento));
+
+        agendamentoService.reagendar(30L, data, LocalTime.of(16, 0));
+
+        assertThat(agendamento.getHora()).isEqualTo(LocalTime.of(16, 0));
+    }
+
+    @Test
+    void reagendarRejeitaStatusTerminal() {
+        Agendamento agendamento = new Agendamento();
+        agendamento.setId(31L);
+        agendamento.setStatus(EStatusAgendamento.CANCELADO);
+        when(agendamentoRepository.findById(31L)).thenReturn(java.util.Optional.of(agendamento));
+
+        assertThatThrownBy(() -> agendamentoService.reagendar(31L, LocalDate.now().plusDays(5), LocalTime.of(10, 0)))
+                .isInstanceOf(RegraDeNegocioException.class);
+    }
+
+    @Test
+    void reagendarRejeitaConflitoComOutroAgendamento() {
+        Agendamento agendamento = new Agendamento();
+        agendamento.setId(32L);
+        agendamento.setStatus(EStatusAgendamento.AGENDADO);
+        agendamento.setDuracaoMinutos(30);
+        when(agendamentoRepository.findById(32L)).thenReturn(java.util.Optional.of(agendamento));
+
+        Agendamento conflitante = agendamentoExistente(LocalTime.of(15, 0), 50);
+        conflitante.setId(999L);
+        when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of(conflitante));
+
+        assertThatThrownBy(() -> agendamentoService.reagendar(32L, LocalDate.now().plusDays(5), LocalTime.of(15, 15)))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("intervalo");
+    }
+
+    @Test
+    void reagendarRejeitaConflitoComTurma() {
+        Agendamento agendamento = new Agendamento();
+        agendamento.setId(33L);
+        agendamento.setStatus(EStatusAgendamento.AGENDADO);
+        agendamento.setDuracaoMinutos(30);
+        when(agendamentoRepository.findById(33L)).thenReturn(java.util.Optional.of(agendamento));
+        when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of());
+        when(turmaRepository.findByDiaSemanaAndStatus(any(), any()))
+                .thenReturn(List.of(turmaAtiva(LocalTime.of(15, 0), ECategoriaServico.AULA_INSTRUMENTO)));
+        when(precoServicoService.buscarDuracaoDeGrupo(ECategoriaServico.AULA_INSTRUMENTO)).thenReturn(50);
+
+        assertThatThrownBy(() -> agendamentoService.reagendar(33L, LocalDate.now().plusDays(5), LocalTime.of(15, 15)))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("intervalo");
+    }
+
+    @Test
     void checkInRegistraDataHoraAutomaticamente() {
         Agendamento agendamento = new Agendamento();
         agendamento.setId(6L);

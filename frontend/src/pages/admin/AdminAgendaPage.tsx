@@ -3,18 +3,29 @@ import { useMemo, useState } from "react";
 import { AcoesContato } from "../../components/admin/AcoesContato";
 import { AdminGate } from "../../components/admin/AdminGate";
 import { AccordionItem } from "../../components/ui/Accordion";
+import { GradeDeHorarios } from "../../components/ui/GradeDeHorarios";
 import {
     confirmarRecorrenciaAdmin,
     definirOrcamentoAdmin,
     listarAgendaAdmin,
+    reagendarAdmin,
     transicionarStatusAdmin,
     type AcaoDeStatus,
 } from "../../services/agendamentoAdminService";
+import { listarHorariosOcupados } from "../../services/agendamentoService";
 import { confirmarRecorrenciaDaTurma } from "../../services/turmaService";
-import { transicionarStatusTurmaOcorrenciaAdmin, type AcaoDeStatusTurma } from "../../services/turmaOcorrenciaAdminService";
+import {
+    reagendarTurmaOcorrenciaAdmin,
+    transicionarStatusTurmaOcorrenciaAdmin,
+    type AcaoDeStatusTurma,
+} from "../../services/turmaOcorrenciaAdminService";
 import { extrairMensagemErro } from "../../services/api";
-import { CATEGORIA_LABELS, INSTRUMENTO_LABELS, STATUS_AGENDAMENTO_LABELS } from "../../types/labels";
+import { CATEGORIA_LABELS, DIA_SEMANA_LABELS, INSTRUMENTO_LABELS, STATUS_AGENDAMENTO_LABELS } from "../../types/labels";
 import { chaveDoCompromisso, dataDoCompromisso, statusDoCompromisso } from "../../utils/compromisso";
+import { DIAS_SEMANA } from "../../utils/diasSemana";
+import { slotIndisponivel } from "../../utils/disponibilidade";
+import { gerarSlotsDeHorario } from "../../utils/horarios";
+import { proximaOcorrenciaISO } from "../../utils/recorrencia";
 import {
     NOMES_MESES,
     diaAnterior,
@@ -25,9 +36,14 @@ import {
     proximoDia,
     semanaAnterior,
 } from "../../utils/calendario";
-import type { AgendamentoResponse, CompromissoResponse, EStatusAgendamento, TurmaOcorrenciaResponse } from "../../types/domain";
+import type { AgendamentoResponse, CompromissoResponse, EDiaSemana, EStatusAgendamento, TurmaOcorrenciaResponse } from "../../types/domain";
 
 type ModoVisualizacao = "mes" | "semana" | "dia";
+
+const SLOTS = gerarSlotsDeHorario();
+
+/** Espelha EStatusAgendamento#isTerminal (backend) - o servidor sempre revalida, isto é só para não mostrar o botão "Reagendar" num compromisso que ele rejeitaria. */
+const STATUS_TERMINAIS: EStatusAgendamento[] = ["FINALIZADO", "CANCELADO", "FALTOU"];
 
 /** Espelha EStatusAgendamento.podeTransicionarPara (backend) - o servidor sempre revalida, isto é só para não mostrar botões que vão dar erro. */
 const ACOES_POR_STATUS: Record<EStatusAgendamento, { acao: AcaoDeStatus; label: string }[]> = {
@@ -126,6 +142,17 @@ function Agenda({ adminKey }: { adminKey: string }) {
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-agenda"] }),
     });
 
+    const reagendarMutation = useMutation({
+        mutationFn: ({ id, data, hora }: { id: number; data: string; hora: string }) => reagendarAdmin(id, data, hora, adminKey),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-agenda"] }),
+    });
+
+    const reagendarTurmaMutation = useMutation({
+        mutationFn: ({ turmaId, data, novaData, novaHora }: { turmaId: number; data: string; novaData: string; novaHora: string }) =>
+            reagendarTurmaOcorrenciaAdmin(turmaId, data, novaData, novaHora, adminKey),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-agenda"] }),
+    });
+
     const chavePendente = acaoMutation.isPending
         ? `ag-${acaoMutation.variables?.id}`
         : acaoTurmaMutation.isPending
@@ -136,7 +163,11 @@ function Agenda({ adminKey }: { adminKey: string }) {
               ? `ag-${recorrenciaMutation.variables?.agendamentoId}`
               : recorrenciaTurmaMutation.isPending
                 ? `turma-recorrencia-${recorrenciaTurmaMutation.variables?.turmaId}`
-                : null;
+                : reagendarMutation.isPending
+                  ? `reagendar-ag-${reagendarMutation.variables?.id}`
+                  : reagendarTurmaMutation.isPending
+                    ? `reagendar-turma-${reagendarTurmaMutation.variables?.turmaId}-${reagendarTurmaMutation.variables?.data}`
+                    : null;
 
     const acoes: AcoesAgendamento = {
         onAcao: (id, acao) => acaoMutation.mutate({ id, acao }),
@@ -144,6 +175,8 @@ function Agenda({ adminKey }: { adminKey: string }) {
         onDefinirOrcamento: (id, valor) => orcamentoMutation.mutate({ id, valor }),
         onConfirmarRecorrencia: (matriculaId, agendamentoId) => recorrenciaMutation.mutate({ matriculaId, agendamentoId }),
         onConfirmarRecorrenciaTurma: (turmaId) => recorrenciaTurmaMutation.mutate({ turmaId }),
+        onReagendar: (id, data, hora) => reagendarMutation.mutate({ id, data, hora }),
+        onReagendarTurma: (turmaId, data, novaData, novaHora) => reagendarTurmaMutation.mutate({ turmaId, data, novaData, novaHora }),
         chavePendente,
         erro: acaoMutation.isError
             ? extrairMensagemErro(acaoMutation.error, "Não foi possível atualizar o status.")
@@ -155,7 +188,11 @@ function Agenda({ adminKey }: { adminKey: string }) {
                   ? extrairMensagemErro(recorrenciaMutation.error, "Não foi possível confirmar a recorrência.")
                   : recorrenciaTurmaMutation.isError
                     ? extrairMensagemErro(recorrenciaTurmaMutation.error, "Não foi possível confirmar a recorrência da turma.")
-                    : null,
+                    : reagendarMutation.isError
+                      ? extrairMensagemErro(reagendarMutation.error, "Não foi possível reagendar o compromisso.")
+                      : reagendarTurmaMutation.isError
+                        ? extrairMensagemErro(reagendarTurmaMutation.error, "Não foi possível reagendar a turma.")
+                        : null,
     };
 
     const porDia = useMemo(() => {
@@ -227,8 +264,62 @@ interface AcoesAgendamento {
     onDefinirOrcamento: (id: number, valor: number) => void;
     onConfirmarRecorrencia: (matriculaId: number, agendamentoId: number) => void;
     onConfirmarRecorrenciaTurma: (turmaId: number) => void;
+    onReagendar: (id: number, data: string, hora: string) => void;
+    onReagendarTurma: (turmaId: number, data: string, novaData: string, novaHora: string) => void;
     chavePendente: string | null;
     erro: string | null;
+}
+
+/**
+ * Fluxo de reagendamento (admin/agenda -> compromisso -> "Reagendar"): escolher dia da semana ->
+ * o sistema calcula a próxima ocorrência desse dia (mesmo padrão de recorrência usado no
+ * agendamento novo, ver HorarioFields) -> mostra os horários disponíveis nesse dia -> escolher um
+ * chama onReagendar imediatamente (mesma UX de clique-para-selecionar de GradeDeHorarios).
+ */
+function ReagendarForm({
+    duracaoMinutos,
+    pendente,
+    onReagendar,
+    onCancelar,
+}: {
+    duracaoMinutos: number;
+    pendente: boolean;
+    onReagendar: (data: string, hora: string) => void;
+    onCancelar: () => void;
+}) {
+    const [diaSemana, setDiaSemana] = useState<EDiaSemana | "">("");
+    const data = diaSemana !== "" ? proximaOcorrenciaISO(diaSemana, new Date()) : "";
+    const ocupadosQuery = useQuery({
+        queryKey: ["horarios-ocupados", data],
+        queryFn: () => listarHorariosOcupados(data),
+        enabled: data !== "",
+    });
+    const ocupados = data !== "" ? (ocupadosQuery.data ?? []) : [];
+
+    return (
+        <span className="agenda-reagendar-form">
+            <select value={diaSemana} onChange={(e) => setDiaSemana(e.target.value as EDiaSemana)} disabled={pendente}>
+                <option value="">Dia da semana...</option>
+                {DIAS_SEMANA.map((dia) => (
+                    <option key={dia} value={dia}>
+                        {DIA_SEMANA_LABELS[dia]}
+                    </option>
+                ))}
+            </select>
+            {diaSemana !== "" && ocupadosQuery.isLoading && <span>Carregando horários...</span>}
+            {diaSemana !== "" && !ocupadosQuery.isLoading && (
+                <GradeDeHorarios
+                    slots={SLOTS}
+                    valorSelecionado=""
+                    onSelecionar={(hora) => onReagendar(data, hora)}
+                    ehBloqueado={(slot) => pendente || slotIndisponivel(slot, duracaoMinutos, ocupados)}
+                />
+            )}
+            <button type="button" className="botao-secundario" disabled={pendente} onClick={onCancelar}>
+                Cancelar
+            </button>
+        </span>
+    );
 }
 
 function OrcamentoForm({ agendamento, acoes }: { agendamento: AgendamentoResponse; acoes: AcoesAgendamento }) {
@@ -257,7 +348,9 @@ function OrcamentoForm({ agendamento, acoes }: { agendamento: AgendamentoRespons
 }
 
 function LinhaAgendamento({ agendamento, acoes }: { agendamento: AgendamentoResponse; acoes: AcoesAgendamento }) {
+    const [reagendando, setReagendando] = useState(false);
     const pendente = acoes.chavePendente === `ag-${agendamento.id}`;
+    const pendenteReagendar = acoes.chavePendente === `reagendar-ag-${agendamento.id}`;
     const acoesDisponiveis = ACOES_POR_STATUS[agendamento.status];
     const nomeExibido = agendamento.alunoNome ?? agendamento.clienteNome;
     const responsavelDiferente = agendamento.alunoNome != null && agendamento.alunoNome !== agendamento.clienteNome;
@@ -285,14 +378,32 @@ function LinhaAgendamento({ agendamento, acoes }: { agendamento: AgendamentoResp
                         Confirmar recorrência (próx. mês)
                     </button>
                 )}
+                {!STATUS_TERMINAIS.includes(agendamento.status) && !reagendando && (
+                    <button type="button" onClick={() => setReagendando(true)}>
+                        Reagendar
+                    </button>
+                )}
             </div>
+            {reagendando && (
+                <ReagendarForm
+                    duracaoMinutos={agendamento.duracaoMinutos}
+                    pendente={pendenteReagendar}
+                    onReagendar={(data, hora) => {
+                        acoes.onReagendar(agendamento.id, data, hora);
+                        setReagendando(false);
+                    }}
+                    onCancelar={() => setReagendando(false)}
+                />
+            )}
         </li>
     );
 }
 
 function LinhaTurmaOcorrencia({ ocorrencia, acoes }: { ocorrencia: TurmaOcorrenciaResponse; acoes: AcoesAgendamento }) {
+    const [reagendando, setReagendando] = useState(false);
     const pendente = acoes.chavePendente === `turma-${ocorrencia.turmaId}-${ocorrencia.data}`;
     const pendenteRecorrencia = acoes.chavePendente === `turma-recorrencia-${ocorrencia.turmaId}`;
+    const pendenteReagendar = acoes.chavePendente === `reagendar-turma-${ocorrencia.turmaId}-${ocorrencia.data}`;
     const acoesDisponiveis = ACOES_TURMA_POR_STATUS[ocorrencia.status];
     const servico = ocorrencia.instrumento
         ? `${CATEGORIA_LABELS[ocorrencia.categoria]} - ${INSTRUMENTO_LABELS[ocorrencia.instrumento]}`
@@ -322,7 +433,23 @@ function LinhaTurmaOcorrencia({ ocorrencia, acoes }: { ocorrencia: TurmaOcorrenc
                     >
                         Confirmar recorrência (todos os alunos)
                     </button>
+                    {!STATUS_TERMINAIS.includes(ocorrencia.status) && !reagendando && (
+                        <button type="button" onClick={() => setReagendando(true)}>
+                            Reagendar
+                        </button>
+                    )}
                 </div>
+                {reagendando && (
+                    <ReagendarForm
+                        duracaoMinutos={ocorrencia.duracaoMinutos ?? 0}
+                        pendente={pendenteReagendar}
+                        onReagendar={(novaData, novaHora) => {
+                            acoes.onReagendarTurma(ocorrencia.turmaId, ocorrencia.data, novaData, novaHora);
+                            setReagendando(false);
+                        }}
+                        onCancelar={() => setReagendando(false)}
+                    />
+                )}
             </AccordionItem>
         </li>
     );

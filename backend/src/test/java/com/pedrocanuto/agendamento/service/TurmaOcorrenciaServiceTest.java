@@ -17,8 +17,10 @@ import com.pedrocanuto.agendamento.mapper.TurmaOcorrenciaMapper;
 import com.pedrocanuto.agendamento.repository.MatriculaRepository;
 import com.pedrocanuto.agendamento.repository.TurmaOcorrenciaRepository;
 import com.pedrocanuto.agendamento.repository.TurmaRepository;
+import com.pedrocanuto.agendamento.service.validation.AgendamentoValidator;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,13 +45,17 @@ class TurmaOcorrenciaServiceTest {
     private TurmaMapper turmaMapper;
     @Mock
     private TurmaOcorrenciaMapper turmaOcorrenciaMapper;
+    @Mock
+    private AgendamentoService agendamentoService;
+    @Mock
+    private AgendamentoValidator agendamentoValidator;
 
     private TurmaOcorrenciaService turmaOcorrenciaService;
 
     @BeforeEach
     void setUp() {
         turmaOcorrenciaService = new TurmaOcorrenciaService(turmaOcorrenciaRepository, turmaRepository, matriculaRepository,
-                precoServicoService, turmaMapper, turmaOcorrenciaMapper);
+                precoServicoService, turmaMapper, turmaOcorrenciaMapper, agendamentoService, agendamentoValidator);
     }
 
     private Turma turmaDeQuarta() {
@@ -149,5 +155,87 @@ class TurmaOcorrenciaServiceTest {
         turmaOcorrenciaService.finalizar(7L, quarta);
 
         assertThat(emAndamento.getDataHoraFinalizacao()).isNotNull();
+    }
+
+    @Test
+    void reagendarMoveDataEHoraSemAlterarTurma() {
+        LocalDate quarta = LocalDate.of(2026, 8, 5);
+        LocalDate sexta = LocalDate.of(2026, 8, 7);
+        TurmaOcorrencia existente = new TurmaOcorrencia();
+        existente.setTurma(turmaDeQuarta());
+        existente.setData(quarta);
+        existente.setStatus(EStatusAgendamento.AGENDADO);
+        when(turmaOcorrenciaRepository.findByTurmaIdAndData(7L, quarta)).thenReturn(Optional.of(existente));
+        when(turmaOcorrenciaRepository.findByTurmaIdAndData(7L, sexta)).thenReturn(Optional.empty());
+        when(precoServicoService.buscarDuracaoDeGrupo(any())).thenReturn(50);
+        when(matriculaRepository.listarPorTurmaEStatus(any(), any())).thenReturn(List.of());
+        when(turmaOcorrenciaMapper.toResponseDTO(any(), any(), any())).thenReturn(
+                new TurmaOcorrenciaResponseDTO(null, 7L, null, null, null, sexta, LocalTime.of(16, 0), null, 50,
+                        EStatusAgendamento.AGENDADO, null, null, List.of()));
+
+        turmaOcorrenciaService.reagendar(7L, quarta, sexta, LocalTime.of(16, 0));
+
+        verify(agendamentoValidator).validarHorario(LocalTime.of(16, 0));
+        verify(agendamentoService).validarDisponibilidadeExcluindo(sexta, LocalTime.of(16, 0), 50, null, 7L);
+        assertThat(existente.getData()).isEqualTo(sexta);
+        assertThat(existente.getHora()).isEqualTo(LocalTime.of(16, 0));
+        assertThat(existente.getDataOriginal()).isEqualTo(quarta);
+    }
+
+    @Test
+    void reagendarNaoSobrescreveDataOriginalNumSegundoReagendamento() {
+        LocalDate quarta = LocalDate.of(2026, 8, 5);
+        LocalDate sexta = LocalDate.of(2026, 8, 7);
+        LocalDate sabado = LocalDate.of(2026, 8, 8);
+        TurmaOcorrencia jaReagendada = new TurmaOcorrencia();
+        jaReagendada.setTurma(turmaDeQuarta());
+        jaReagendada.setData(sexta);
+        jaReagendada.setDataOriginal(quarta);
+        jaReagendada.setStatus(EStatusAgendamento.AGENDADO);
+        when(turmaOcorrenciaRepository.findByTurmaIdAndData(7L, sexta)).thenReturn(Optional.of(jaReagendada));
+        when(turmaOcorrenciaRepository.findByTurmaIdAndData(7L, sabado)).thenReturn(Optional.empty());
+        when(precoServicoService.buscarDuracaoDeGrupo(any())).thenReturn(50);
+        when(matriculaRepository.listarPorTurmaEStatus(any(), any())).thenReturn(List.of());
+        when(turmaOcorrenciaMapper.toResponseDTO(any(), any(), any())).thenReturn(
+                new TurmaOcorrenciaResponseDTO(null, 7L, null, null, null, sabado, LocalTime.of(10, 0), null, 50,
+                        EStatusAgendamento.AGENDADO, null, null, List.of()));
+
+        turmaOcorrenciaService.reagendar(7L, sexta, sabado, LocalTime.of(10, 0));
+
+        assertThat(jaReagendada.getData()).isEqualTo(sabado);
+        assertThat(jaReagendada.getDataOriginal()).isEqualTo(quarta);
+    }
+
+    @Test
+    void reagendarRejeitaStatusTerminal() {
+        LocalDate quarta = LocalDate.of(2026, 8, 5);
+        TurmaOcorrencia finalizada = new TurmaOcorrencia();
+        finalizada.setTurma(turmaDeQuarta());
+        finalizada.setData(quarta);
+        finalizada.setStatus(EStatusAgendamento.FINALIZADO);
+        when(turmaOcorrenciaRepository.findByTurmaIdAndData(7L, quarta)).thenReturn(Optional.of(finalizada));
+
+        assertThatThrownBy(() -> turmaOcorrenciaService.reagendar(7L, quarta, quarta.plusDays(2), LocalTime.of(10, 0)))
+                .isInstanceOf(RegraDeNegocioException.class);
+
+        verify(agendamentoService, never()).validarDisponibilidadeExcluindo(any(), any(), any(Integer.class), any(), any());
+    }
+
+    @Test
+    void reagendarRejeitaSeJaExisteOcorrenciaNaDataNova() {
+        LocalDate quarta = LocalDate.of(2026, 8, 5);
+        LocalDate sexta = LocalDate.of(2026, 8, 7);
+        TurmaOcorrencia existente = new TurmaOcorrencia();
+        existente.setTurma(turmaDeQuarta());
+        existente.setData(quarta);
+        existente.setStatus(EStatusAgendamento.AGENDADO);
+        when(turmaOcorrenciaRepository.findByTurmaIdAndData(7L, quarta)).thenReturn(Optional.of(existente));
+        when(turmaOcorrenciaRepository.findByTurmaIdAndData(7L, sexta)).thenReturn(Optional.of(new TurmaOcorrencia()));
+
+        assertThatThrownBy(() -> turmaOcorrenciaService.reagendar(7L, quarta, sexta, LocalTime.of(10, 0)))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("já tem uma ocorrência");
+
+        verify(agendamentoService, never()).validarDisponibilidadeExcluindo(any(), any(), any(Integer.class), any(), any());
     }
 }

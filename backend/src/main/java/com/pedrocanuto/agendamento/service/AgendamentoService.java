@@ -332,6 +332,24 @@ public class AgendamentoService {
         return agendamentoMapper.toResponseDTO(transicionar(id, EStatusAgendamento.FALTOU));
     }
 
+    /**
+     * Move um Agendamento (aula individual ou evento) para nova data/hora, revalidando
+     * disponibilidade no novo slot (excluindo o próprio id do conflito - ele ainda ocupa a
+     * data/hora antiga até este método trocar). Só permitido em status não-terminal (ver
+     * EStatusAgendamento#isTerminal) - não faz sentido reagendar algo já FINALIZADO/CANCELADO/FALTOU.
+     */
+    public AgendamentoResponseDTO reagendar(Long id, LocalDate novaData, LocalTime novaHora) {
+        Agendamento agendamento = buscarEntidadePorId(id);
+        if (agendamento.getStatus().isTerminal()) {
+            throw new RegraDeNegocioException("Não é possível reagendar um compromisso com status " + agendamento.getStatus());
+        }
+        validator.validarHorario(novaHora);
+        validarDisponibilidade(novaData, novaHora, agendamento.getDuracaoMinutos(), id, null);
+        agendamento.setData(novaData);
+        agendamento.setHora(novaHora);
+        return agendamentoMapper.toResponseDTO(agendamento);
+    }
+
     private Agendamento transicionar(Long id, EStatusAgendamento novoStatus) {
         Agendamento agendamento = buscarEntidadePorId(id);
         if (!agendamento.getStatus().podeTransicionarPara(novoStatus)) {
@@ -427,12 +445,24 @@ public class AgendamentoService {
     }
 
     private void validarDisponibilidade(LocalDate data, LocalTime hora, int duracaoMinutos) {
+        validarDisponibilidade(data, hora, duracaoMinutos, null, null);
+    }
+
+    /**
+     * Usado por {@link #reagendar} e por {@link TurmaOcorrenciaService#reagendar} (via
+     * {@link #validarDisponibilidadeExcluindo}) para revalidar disponibilidade no novo slot sem o
+     * compromisso que está sendo movido se auto-bloquear (ele ainda ocupa a data/hora antiga no
+     * banco no momento desta checagem).
+     */
+    private void validarDisponibilidade(LocalDate data, LocalTime hora, int duracaoMinutos, Long excluirAgendamentoId, Long excluirTurmaId) {
         int inicioNovo = minutosDoDia(hora);
 
         boolean conflitaComAgendamento = agendamentoRepository.findByDataAndStatusNot(data, EStatusAgendamento.CANCELADO).stream()
+                .filter(existente -> excluirAgendamentoId == null || !existente.getId().equals(excluirAgendamentoId))
                 .anyMatch(existente -> conflita(inicioNovo, duracaoMinutos, minutosDoDia(existente.getHora()), existente.getDuracaoMinutos()));
 
         boolean conflitaComTurma = turmasNoDiaDaSemana(data).stream()
+                .filter(turma -> excluirTurmaId == null || !turma.getId().equals(excluirTurmaId))
                 .anyMatch(turma -> conflita(inicioNovo, duracaoMinutos, minutosDoDia(turma.getHora()),
                         precoServicoService.buscarDuracaoDeGrupo(turma.getCategoria())));
 
@@ -441,6 +471,11 @@ public class AgendamentoService {
                     "Horário indisponível - já existe um compromisso agendado que não deixa os %d minutos de intervalo necessários antes/depois"
                             .formatted(MINUTOS_INTERVALO_ENTRE_COMPROMISSOS));
         }
+    }
+
+    /** Usado por {@link TurmaOcorrenciaService#reagendar} - centraliza aqui a mesma regra de conflito de #reagendar (mesmo padrão de #validarDisponibilidadeDeNovaTurma). */
+    public void validarDisponibilidadeExcluindo(LocalDate data, LocalTime hora, int duracaoMinutos, Long excluirAgendamentoId, Long excluirTurmaId) {
+        validarDisponibilidade(data, hora, duracaoMinutos, excluirAgendamentoId, excluirTurmaId);
     }
 
     private List<Turma> turmasNoDiaDaSemana(LocalDate data) {

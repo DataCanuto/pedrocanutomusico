@@ -14,6 +14,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -48,6 +49,22 @@ public class TurmaOcorrencia {
 
     @Column(nullable = false)
     private LocalDate data;
+
+    /**
+     * Preenchida só quando esta ocorrência foi reagendada (ver TurmaOcorrenciaService#reagendar):
+     * a data natural (turma.diaSemana) que ela ocupava antes de mover para {@link #data}. Usada só
+     * para a agenda não gerar uma ocorrência virtual fantasma para o slot semanal que ficou vago -
+     * ver AgendaAdminService#listarOcorrenciasDeTurma. Nunca é sobrescrita num segundo
+     * reagendamento - sempre guarda a primeira/verdadeira data natural.
+     */
+    private LocalDate dataOriginal;
+
+    /**
+     * Sobrescreve {@code turma.hora} só quando esta ocorrência foi reagendada para um horário
+     * diferente do recorrente da Turma - nulo (o normal) significa "usa o horário da turma" (ver
+     * TurmaOcorrenciaMapper).
+     */
+    private LocalTime hora;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

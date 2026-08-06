@@ -11,11 +11,11 @@ import { slotIndisponivel } from "../../utils/disponibilidade";
 import { gerarSlotsDeHorario } from "../../utils/horarios";
 import { proximaOcorrenciaISO } from "../../utils/recorrencia";
 import { CATEGORIA_LABELS, DIA_SEMANA_LABELS, INSTRUMENTO_LABELS } from "../../types/labels";
+import { DIAS_SEMANA } from "../../utils/diasSemana";
 import type { ECategoriaServico, EDiaSemana, EInstrumento } from "../../types/domain";
 
 const CATEGORIAS_DE_AULA = Object.keys(CATEGORIA_LABELS).filter((c) => c !== "EVENTO") as ECategoriaServico[];
 const TODOS_INSTRUMENTOS = Object.keys(INSTRUMENTO_LABELS) as EInstrumento[];
-const DIAS_SEMANA = Object.keys(DIA_SEMANA_LABELS) as EDiaSemana[];
 const SLOTS = gerarSlotsDeHorario();
 
 export function AdminTurmasPage() {

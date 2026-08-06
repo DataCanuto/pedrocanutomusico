@@ -23,6 +23,7 @@ import com.pedrocanuto.agendamento.repository.TurmaRepository;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -121,6 +122,41 @@ class AgendaAdminServiceTest {
 
         assertThat(resultado).hasSize(1);
         verify(agendamentoService).listar(eq(quarta), eq(ECategoriaServico.AULA_INSTRUMENTO));
+    }
+
+    /**
+     * Ver TurmaOcorrenciaService#reagendar: mover uma ocorrência para outra data guarda o slot
+     * semanal vago em dataOriginal só para este cenário não voltar a gerar uma ocorrência virtual
+     * fantasma nele.
+     */
+    @Test
+    void listarNaoGeraOcorrenciaFantasmaNoSlotOriginalAposReagendamento() {
+        LocalDate dataOriginal = LocalDate.now().plusDays(3).with(TemporalAdjusters.nextOrSame(DayOfWeek.WEDNESDAY));
+        LocalDate novaData = dataOriginal.plusDays(2);
+        Turma turmaAtiva = turma(ECategoriaServico.AULA_INSTRUMENTO, DayOfWeek.WEDNESDAY);
+
+        TurmaOcorrencia reagendada = new TurmaOcorrencia();
+        reagendada.setTurma(turmaAtiva);
+        reagendada.setData(novaData);
+        reagendada.setDataOriginal(dataOriginal);
+        reagendada.setStatus(EStatusAgendamento.AGENDADO);
+
+        when(agendamentoService.listar(null, null)).thenReturn(List.of());
+        when(turmaOcorrenciaRepository.findByDataBetween(any(), any())).thenReturn(List.of(reagendada));
+        when(turmaRepository.findByStatus(EStatusTurma.ATIVA)).thenReturn(List.of(turmaAtiva));
+        when(matriculaRepository.listarComTurmaEAluno()).thenReturn(List.of());
+        when(precoServicoService.buscarDuracaoDeGrupo(any())).thenReturn(50);
+        // turma.diaSemana é WEDNESDAY, então a janela padrão (38 dias) tem várias quartas normais
+        // além do slot vago - o mapper devolve o DTO com a data de cada TurmaOcorrencia (real ou
+        // virtual) recebida, para o teste conseguir distinguir qual data cada resultado representa.
+        when(turmaOcorrenciaMapper.toResponseDTO(any(), any(), any()))
+                .thenAnswer(invocation -> mockOcorrencia(((TurmaOcorrencia) invocation.getArgument(0)).getData()));
+
+        List<CompromissoResponseDTO> resultado = agendaAdminService.listar(null, null);
+
+        List<LocalDate> datas = resultado.stream().map(c -> c.turmaOcorrencia().data()).toList();
+        assertThat(datas).doesNotContain(dataOriginal); // sem fantasma no slot semanal que ficou vago
+        assertThat(datas).filteredOn(novaData::equals).hasSize(1); // a ocorrência reagendada aparece exatamente uma vez
     }
 
     @Test
