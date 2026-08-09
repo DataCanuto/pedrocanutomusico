@@ -33,4 +33,7 @@ backend/target/
 .DS_Store
 Thumbs.db
 
-*.md *.txt
+*.md
+*.txt
+!/README.md
+!frontend/public/robots.txt
