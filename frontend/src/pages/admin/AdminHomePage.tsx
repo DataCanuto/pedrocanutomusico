@@ -10,7 +10,11 @@ const ACOES = [
     { to: "/admin/musicos", titulo: "Cadastrar músico parceiro", descricao: "Cadastra músicos parceiros disponíveis para eventos e turmas." },
     { to: "/admin/precos", titulo: "Ver tabela de preços", descricao: "Consulta e ajusta os valores/durações já cadastrados." },
     { to: "/admin/agenda", titulo: "Ver agenda", descricao: "Calendário com os agendamentos - por mês, semana ou dia." },
-    { to: "/admin/clientes", titulo: "Ver clientes", descricao: "Lista de clientes com atalho para WhatsApp e endereço." },
+    {
+        to: "/admin/clientes",
+        titulo: "Ver clientes",
+        descricao: "Lista de clientes com agendamentos, filtros/ordenação e atalhos para WhatsApp/Waze.",
+    },
     { to: "/admin/turmas/ver", titulo: "Ver turmas", descricao: "Turmas ativas com os alunos matriculados em cada uma." },
     { to: "/admin/anamneses", titulo: "Ver anamneses", descricao: "Pacientes de musicoterapia com a anamnese preenchida no primeiro agendamento." },
 ];

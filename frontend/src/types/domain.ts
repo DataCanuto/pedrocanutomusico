@@ -85,6 +85,30 @@ export interface ClienteListItem {
     categoriaServico: ECategoriaServico | null;
 }
 
+export interface AlunoResponse {
+    id: number;
+    nome: string;
+    dataNascimento: string;
+    idade: number;
+    sexo: ESexo | null;
+    observacoes: string | null;
+    ehProprioResponsavel: boolean;
+}
+
+/** Visão de detalhe de um Cliente - endereços completos e alunos vinculados - ver AdminClientesPage. */
+export interface ClienteResponse {
+    id: number;
+    nome: string;
+    telefone: string;
+    email: string | null;
+    cpf: string | null;
+    cnpj: string | null;
+    dataNascimento: string | null;
+    sexo: ESexo | null;
+    enderecos: EnderecoResponse[];
+    alunos: AlunoResponse[];
+}
+
 export interface AlunoRequest {
     nome: string;
     dataNascimento: string;

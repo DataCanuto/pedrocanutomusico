@@ -573,6 +573,27 @@ class AgendamentoServiceTest {
     }
 
     @Test
+    void listarPorClienteRetornaOrdenadoPorDataEHoraCrescentes() {
+        Agendamento maisTarde = new Agendamento();
+        maisTarde.setId(41L);
+        maisTarde.setData(LocalDate.now().plusDays(10));
+        maisTarde.setHora(LocalTime.of(9, 0));
+
+        Agendamento maisCedo = new Agendamento();
+        maisCedo.setId(40L);
+        maisCedo.setData(LocalDate.now().plusDays(3));
+        maisCedo.setHora(LocalTime.of(15, 0));
+
+        when(agendamentoRepository.findByClienteId(7L)).thenReturn(List.of(maisTarde, maisCedo));
+
+        agendamentoService.listarPorCliente(7L);
+
+        ArgumentCaptor<Agendamento> captor = ArgumentCaptor.forClass(Agendamento.class);
+        verify(agendamentoMapper, times(2)).toResponseDTO(captor.capture());
+        assertThat(captor.getAllValues()).extracting(Agendamento::getId).containsExactly(40L, 41L);
+    }
+
+    @Test
     void checkInRegistraDataHoraAutomaticamente() {
         Agendamento agendamento = new Agendamento();
         agendamento.setId(6L);

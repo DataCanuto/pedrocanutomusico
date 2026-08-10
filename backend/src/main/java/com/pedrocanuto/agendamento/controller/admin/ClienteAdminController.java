@@ -1,10 +1,12 @@
 package com.pedrocanuto.agendamento.controller.admin;
 
 import com.pedrocanuto.agendamento.dto.request.ClienteRequestDTO;
+import com.pedrocanuto.agendamento.dto.response.AgendamentoResponseDTO;
 import com.pedrocanuto.agendamento.dto.response.AlunoResponseDTO;
 import com.pedrocanuto.agendamento.dto.response.ClienteListItemResponseDTO;
 import com.pedrocanuto.agendamento.dto.response.ClienteResponseDTO;
 import com.pedrocanuto.agendamento.dto.response.MatriculaResponseDTO;
+import com.pedrocanuto.agendamento.service.AgendamentoService;
 import com.pedrocanuto.agendamento.service.AlunoService;
 import com.pedrocanuto.agendamento.service.ClienteService;
 import com.pedrocanuto.agendamento.service.MatriculaService;
@@ -34,12 +36,14 @@ public class ClienteAdminController {
     private final ClienteService clienteService;
     private final AlunoService alunoService;
     private final MatriculaService matriculaService;
+    private final AgendamentoService agendamentoService;
 
     public ClienteAdminController(ClienteService clienteService, AlunoService alunoService,
-                                   MatriculaService matriculaService) {
+                                   MatriculaService matriculaService, AgendamentoService agendamentoService) {
         this.clienteService = clienteService;
         this.alunoService = alunoService;
         this.matriculaService = matriculaService;
+        this.agendamentoService = agendamentoService;
     }
 
     @GetMapping
@@ -76,5 +80,10 @@ public class ClienteAdminController {
     @GetMapping("/{id}/matriculas")
     public List<MatriculaResponseDTO> listarMatriculas(@PathVariable Long id) {
         return matriculaService.listarPorCliente(id);
+    }
+
+    @GetMapping("/{id}/agendamentos")
+    public List<AgendamentoResponseDTO> listarAgendamentos(@PathVariable Long id) {
+        return agendamentoService.listarPorCliente(id);
     }
 }

@@ -2,8 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { AcoesContato } from "../../components/admin/AcoesContato";
 import { AdminGate } from "../../components/admin/AdminGate";
+import { ReagendarForm } from "../../components/admin/ReagendarForm";
 import { AccordionItem } from "../../components/ui/Accordion";
-import { GradeDeHorarios } from "../../components/ui/GradeDeHorarios";
 import {
     confirmarRecorrenciaAdmin,
     definirOrcamentoAdmin,
@@ -12,7 +12,6 @@ import {
     transicionarStatusAdmin,
     type AcaoDeStatus,
 } from "../../services/agendamentoAdminService";
-import { listarHorariosOcupados } from "../../services/agendamentoService";
 import { confirmarRecorrenciaDaTurma } from "../../services/turmaService";
 import {
     reagendarTurmaOcorrenciaAdmin,
@@ -20,12 +19,8 @@ import {
     type AcaoDeStatusTurma,
 } from "../../services/turmaOcorrenciaAdminService";
 import { extrairMensagemErro } from "../../services/api";
-import { CATEGORIA_LABELS, DIA_SEMANA_LABELS, INSTRUMENTO_LABELS, STATUS_AGENDAMENTO_LABELS } from "../../types/labels";
-import { chaveDoCompromisso, dataDoCompromisso, statusDoCompromisso } from "../../utils/compromisso";
-import { DIAS_SEMANA } from "../../utils/diasSemana";
-import { slotIndisponivel } from "../../utils/disponibilidade";
-import { gerarSlotsDeHorario } from "../../utils/horarios";
-import { proximaOcorrenciaISO } from "../../utils/recorrencia";
+import { CATEGORIA_LABELS, INSTRUMENTO_LABELS, STATUS_AGENDAMENTO_LABELS } from "../../types/labels";
+import { STATUS_TERMINAIS, chaveDoCompromisso, dataDoCompromisso, statusDoCompromisso } from "../../utils/compromisso";
 import {
     NOMES_MESES,
     diaAnterior,
@@ -36,14 +31,9 @@ import {
     proximoDia,
     semanaAnterior,
 } from "../../utils/calendario";
-import type { AgendamentoResponse, CompromissoResponse, EDiaSemana, EStatusAgendamento, TurmaOcorrenciaResponse } from "../../types/domain";
+import type { AgendamentoResponse, CompromissoResponse, EStatusAgendamento, TurmaOcorrenciaResponse } from "../../types/domain";
 
 type ModoVisualizacao = "mes" | "semana" | "dia";
-
-const SLOTS = gerarSlotsDeHorario();
-
-/** Espelha EStatusAgendamento#isTerminal (backend) - o servidor sempre revalida, isto é só para não mostrar o botão "Reagendar" num compromisso que ele rejeitaria. */
-const STATUS_TERMINAIS: EStatusAgendamento[] = ["FINALIZADO", "CANCELADO", "FALTOU"];
 
 /** Espelha EStatusAgendamento.podeTransicionarPara (backend) - o servidor sempre revalida, isto é só para não mostrar botões que vão dar erro. */
 const ACOES_POR_STATUS: Record<EStatusAgendamento, { acao: AcaoDeStatus; label: string }[]> = {
@@ -268,58 +258,6 @@ interface AcoesAgendamento {
     onReagendarTurma: (turmaId: number, data: string, novaData: string, novaHora: string) => void;
     chavePendente: string | null;
     erro: string | null;
-}
-
-/**
- * Fluxo de reagendamento (admin/agenda -> compromisso -> "Reagendar"): escolher dia da semana ->
- * o sistema calcula a próxima ocorrência desse dia (mesmo padrão de recorrência usado no
- * agendamento novo, ver HorarioFields) -> mostra os horários disponíveis nesse dia -> escolher um
- * chama onReagendar imediatamente (mesma UX de clique-para-selecionar de GradeDeHorarios).
- */
-function ReagendarForm({
-    duracaoMinutos,
-    pendente,
-    onReagendar,
-    onCancelar,
-}: {
-    duracaoMinutos: number;
-    pendente: boolean;
-    onReagendar: (data: string, hora: string) => void;
-    onCancelar: () => void;
-}) {
-    const [diaSemana, setDiaSemana] = useState<EDiaSemana | "">("");
-    const data = diaSemana !== "" ? proximaOcorrenciaISO(diaSemana, new Date()) : "";
-    const ocupadosQuery = useQuery({
-        queryKey: ["horarios-ocupados", data],
-        queryFn: () => listarHorariosOcupados(data),
-        enabled: data !== "",
-    });
-    const ocupados = data !== "" ? (ocupadosQuery.data ?? []) : [];
-
-    return (
-        <span className="agenda-reagendar-form">
-            <select value={diaSemana} onChange={(e) => setDiaSemana(e.target.value as EDiaSemana)} disabled={pendente}>
-                <option value="">Dia da semana...</option>
-                {DIAS_SEMANA.map((dia) => (
-                    <option key={dia} value={dia}>
-                        {DIA_SEMANA_LABELS[dia]}
-                    </option>
-                ))}
-            </select>
-            {diaSemana !== "" && ocupadosQuery.isLoading && <span>Carregando horários...</span>}
-            {diaSemana !== "" && !ocupadosQuery.isLoading && (
-                <GradeDeHorarios
-                    slots={SLOTS}
-                    valorSelecionado=""
-                    onSelecionar={(hora) => onReagendar(data, hora)}
-                    ehBloqueado={(slot) => pendente || slotIndisponivel(slot, duracaoMinutos, ocupados)}
-                />
-            )}
-            <button type="button" className="botao-secundario" disabled={pendente} onClick={onCancelar}>
-                Cancelar
-            </button>
-        </span>
-    );
 }
 
 function OrcamentoForm({ agendamento, acoes }: { agendamento: AgendamentoResponse; acoes: AcoesAgendamento }) {

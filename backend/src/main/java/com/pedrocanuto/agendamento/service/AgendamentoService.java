@@ -9,6 +9,7 @@ import java.time.LocalTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -418,6 +419,19 @@ public class AgendamentoService {
             agendamentos = agendamentoRepository.findByTurmaIsNull();
         }
         return agendamentos.stream().map(agendamentoMapper::toResponseDTO).toList();
+    }
+
+    /**
+     * Todos os agendamentos de um cliente, do mais próximo para o mais distante - alimenta o
+     * painel administrativo de clientes (ver ClienteAdminController), onde o professor precisa ver
+     * de uma vez todas as datas marcadas de um cliente para planejar sua agenda.
+     */
+    @Transactional(readOnly = true)
+    public List<AgendamentoResponseDTO> listarPorCliente(Long clienteId) {
+        return agendamentoRepository.findByClienteId(clienteId).stream()
+                .sorted(Comparator.comparing(Agendamento::getData).thenComparing(Agendamento::getHora))
+                .map(agendamentoMapper::toResponseDTO)
+                .toList();
     }
 
     /**

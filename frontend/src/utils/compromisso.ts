@@ -1,5 +1,8 @@
 import type { CompromissoResponse, EStatusAgendamento } from "../types/domain";
 
+/** Espelha EStatusAgendamento#isTerminal (backend) - o servidor sempre revalida, isto é só para não mostrar o botão "Reagendar" num compromisso que ele rejeitaria. */
+export const STATUS_TERMINAIS: EStatusAgendamento[] = ["FINALIZADO", "CANCELADO", "FALTOU"];
+
 /**
  * Helpers compartilhados para ler campos de um CompromissoResponse sem precisar checar `tipo` em
  * todo lugar que só quer a data/hora/status - usado por AdminAgendaPage e AdminHomePage.

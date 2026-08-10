@@ -597,6 +597,43 @@
   color: var(--text);
 }
 
+/* Painel de clientes (AdminClientesPage) */
+.admin-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.admin-filtros input,
+.admin-filtros select {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.admin-filtros input[type="search"] {
+  flex: 1;
+  min-width: 200px;
+}
+
+.cliente-detalhe {
+  margin-bottom: 12px;
+}
+
+.cliente-categoria-grupo {
+  margin-top: 12px;
+}
+
+.cliente-categoria-grupo h3 {
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
 /* Agenda */
 .agenda-modos {
   display: flex;
