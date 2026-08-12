@@ -8,15 +8,14 @@ import { listarHorariosOcupados } from "../../services/agendamentoService";
 import { listarPrecos } from "../../services/precoService";
 import { criarTurma } from "../../services/turmaService";
 import { slotIndisponivel } from "../../utils/disponibilidade";
-import { gerarSlotsDeHorario } from "../../utils/horarios";
+import { gerarSlotsDeHorarioDeAula } from "../../utils/horarios";
 import { proximaOcorrenciaISO } from "../../utils/recorrencia";
 import { CATEGORIA_LABELS, DIA_SEMANA_LABELS, INSTRUMENTO_LABELS } from "../../types/labels";
-import { DIAS_SEMANA } from "../../utils/diasSemana";
+import { DIAS_SEMANA_AULA } from "../../utils/diasSemana";
 import type { ECategoriaServico, EDiaSemana, EInstrumento } from "../../types/domain";
 
 const CATEGORIAS_DE_AULA = Object.keys(CATEGORIA_LABELS).filter((c) => c !== "EVENTO") as ECategoriaServico[];
 const TODOS_INSTRUMENTOS = Object.keys(INSTRUMENTO_LABELS) as EInstrumento[];
-const SLOTS = gerarSlotsDeHorario();
 
 export function AdminTurmasPage() {
     return <AdminGate titulo="Cadastrar turma">{(adminKey) => <CadastroDeTurma adminKey={adminKey} />}</AdminGate>;
@@ -50,13 +49,14 @@ function CadastroDeTurma({ adminKey }: { adminKey: string }) {
         enabled: dataDeReferencia !== "",
     });
     const ocupados = dataDeReferencia !== "" ? (ocupadosQuery.data ?? []) : [];
+    const slots = gerarSlotsDeHorarioDeAula(diaSemana);
 
     useEffect(() => {
-        if (hora !== "" && duracaoGrupo != null && slotIndisponivel(hora, duracaoGrupo, ocupados)) {
+        if (hora !== "" && (!slots.includes(hora) || (duracaoGrupo != null && slotIndisponivel(hora, duracaoGrupo, ocupados)))) {
             setHora("");
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [dataDeReferencia, duracaoGrupo, ocupadosQuery.data]);
+    }, [diaSemana, dataDeReferencia, duracaoGrupo, ocupadosQuery.data]);
 
     const mutation = useMutation({
         mutationFn: () =>
@@ -126,7 +126,7 @@ function CadastroDeTurma({ adminKey }: { adminKey: string }) {
                             <label htmlFor="diaSemana">Dia da semana</label>
                             <select id="diaSemana" value={diaSemana} onChange={(e) => setDiaSemana(e.target.value as EDiaSemana)} required>
                                 <option value="">Selecione...</option>
-                                {DIAS_SEMANA.map((dia) => (
+                                {DIAS_SEMANA_AULA.map((dia) => (
                                     <option key={dia} value={dia}>
                                         {DIA_SEMANA_LABELS[dia]}
                                     </option>
@@ -134,8 +134,9 @@ function CadastroDeTurma({ adminKey }: { adminKey: string }) {
                             </select>
                         </div>
                         <p className="aviso">
-                            A turma acontece toda semana neste dia e horário. Cada família que se matricular recebe automaticamente
-                            todas as aulas do pacote escolhido, geradas dentro de 31 dias corridos a partir da inscrição.
+                            A turma acontece toda semana neste dia e horário (seg-sex 08h-18h, sáb 08h-13h - sem turmas aos domingos).
+                            Cada família que se matricular recebe automaticamente todas as aulas do pacote escolhido, geradas dentro de
+                            31 dias corridos a partir da inscrição.
                         </p>
 
                         <label>Horário</label>
@@ -144,7 +145,7 @@ function CadastroDeTurma({ adminKey }: { adminKey: string }) {
                         {diaSemana !== "" && categoria !== "" && ocupadosQuery.isLoading && <p className="aviso">Carregando horários disponíveis...</p>}
                         {diaSemana !== "" && categoria !== "" && (
                             <GradeDeHorarios
-                                slots={SLOTS}
+                                slots={slots}
                                 valorSelecionado={hora}
                                 onSelecionar={setHora}
                                 ehBloqueado={(slot) => duracaoGrupo == null || slotIndisponivel(slot, duracaoGrupo, ocupados)}

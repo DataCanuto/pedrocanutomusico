@@ -175,7 +175,7 @@ class TurmaOcorrenciaServiceTest {
 
         turmaOcorrenciaService.reagendar(7L, quarta, sexta, LocalTime.of(16, 0));
 
-        verify(agendamentoValidator).validarHorario(LocalTime.of(16, 0));
+        verify(agendamentoValidator).validarHorarioDeAula(sexta, LocalTime.of(16, 0));
         verify(agendamentoService).validarDisponibilidadeExcluindo(sexta, LocalTime.of(16, 0), 50, null, 7L);
         assertThat(existente.getData()).isEqualTo(sexta);
         assertThat(existente.getHora()).isEqualTo(LocalTime.of(16, 0));

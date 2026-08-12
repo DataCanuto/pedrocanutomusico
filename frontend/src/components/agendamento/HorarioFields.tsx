@@ -5,13 +5,12 @@ import { GradeDeHorarios } from "../ui/GradeDeHorarios";
 import { listarHorariosOcupados } from "../../services/agendamentoService";
 import type { EDiaSemana, ETipoContratacao, PrecoServico } from "../../types/domain";
 import { DIA_SEMANA_LABELS, QUANTIDADE_AULAS } from "../../types/labels";
-import { DIAS_SEMANA } from "../../utils/diasSemana";
+import { DIAS_SEMANA_AULA } from "../../utils/diasSemana";
 import { slotIndisponivel } from "../../utils/disponibilidade";
-import { gerarSlotsDeHorario } from "../../utils/horarios";
+import { diaSemanaDe, gerarSlotsDeHorario, gerarSlotsDeHorarioDeAula } from "../../utils/horarios";
 import { cabeNaJanela, gerarPreviewDeDatas, proximaOcorrenciaISO } from "../../utils/recorrencia";
-import { ehPacoteRecorrente, resolverDuracaoMinutos, type AgendamentoFormValues } from "./formTypes";
+import { categoriaEhDeAula, ehPacoteRecorrente, resolverDuracaoMinutos, type AgendamentoFormValues } from "./formTypes";
 
-const SLOTS = gerarSlotsDeHorario();
 const MAX_RECORRENCIAS = 3;
 
 export function HorarioFields({ precos }: { precos: PrecoServico[] }) {
@@ -52,10 +51,21 @@ export function HorarioFields({ precos }: { precos: PrecoServico[] }) {
     });
     const ocupados = data !== "" ? (ocupadosQuery.data ?? []) : [];
 
-    // Se a data/duração mudar e o horário já escolhido deixar de caber, limpa a seleção em vez
-    // de deixar o formulário guardar (sem o cliente perceber) um horário que agora está bloqueado.
+    // Eventos podem ser marcados em qualquer dia disponível (inclusive domingo); as categorias de
+    // aula seguem o expediente seg-sex 08h-18h / sáb 08h-13h, sem atendimento aos domingos - mesma
+    // regra validada no backend (AgendamentoValidator).
+    const ehAula = categoriaEhDeAula(categoria);
+    const slots = !ehAula ? gerarSlotsDeHorario() : data !== "" ? gerarSlotsDeHorarioDeAula(diaSemanaDe(data)) : [];
+    const dataEhDomingoSemAula = ehAula && data !== "" && diaSemanaDe(data) === "SUNDAY";
+
+    // Se a data/duração mudar e o horário já escolhido deixar de caber (conflito ou fora do novo
+    // expediente do dia), limpa a seleção em vez de deixar o formulário guardar (sem o cliente
+    // perceber) um horário que agora está bloqueado.
     useEffect(() => {
-        if (campoHora.value !== "" && duracaoMinutos != null && slotIndisponivel(campoHora.value, duracaoMinutos, ocupados)) {
+        if (
+            campoHora.value !== "" &&
+            (!slots.includes(campoHora.value) || (duracaoMinutos != null && slotIndisponivel(campoHora.value, duracaoMinutos, ocupados)))
+        ) {
             campoHora.onChange("");
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -129,6 +139,9 @@ export function HorarioFields({ precos }: { precos: PrecoServico[] }) {
             <label htmlFor="data">Data</label>
             <input id="data" type="date" min={hoje} {...register("data", { required: "Selecione a data" })} />
             {errors.data && <span className="erro-campo">{errors.data.message}</span>}
+            {dataEhDomingoSemAula && (
+                <p className="erro-campo">Não há expediente de aula aos domingos - escolha outra data ou marque um evento.</p>
+            )}
 
             <fieldset className="grupo-horario">
                 <legend>Horário</legend>
@@ -136,7 +149,7 @@ export function HorarioFields({ precos }: { precos: PrecoServico[] }) {
                     <p className="aviso">Carregando horários disponíveis...</p>
                 )}
                 <GradeDeHorarios
-                    slots={SLOTS}
+                    slots={slots}
                     valorSelecionado={campoHora.value}
                     onSelecionar={campoHora.onChange}
                     ehBloqueado={(slot) => data !== "" && duracaoMinutos != null && slotIndisponivel(slot, duracaoMinutos, ocupados)}
@@ -175,6 +188,7 @@ function LinhaRecorrencia({
     const { field: campoHora } = useController({ control, name: `recorrencias.${index}.hora`, rules: { required: "Selecione o horário" } });
 
     const data = diaSemana !== "" ? proximaOcorrenciaISO(diaSemana, new Date()) : "";
+    const slots = gerarSlotsDeHorarioDeAula(diaSemana);
     const ocupadosQuery = useQuery({
         queryKey: ["horarios-ocupados", data],
         queryFn: () => listarHorariosOcupados(data),
@@ -183,9 +197,13 @@ function LinhaRecorrencia({
     const ocupados = data !== "" ? (ocupadosQuery.data ?? []) : [];
 
     // Mesma lógica da aula avulsa: se o dia da semana mudar e o horário escolhido deixar de caber
-    // na nova referência, limpa a seleção em vez de guardar um horário agora bloqueado.
+    // na nova referência (fora do expediente ou em conflito), limpa a seleção em vez de guardar um
+    // horário agora bloqueado.
     useEffect(() => {
-        if (campoHora.value !== "" && duracaoMinutos != null && slotIndisponivel(campoHora.value, duracaoMinutos, ocupados)) {
+        if (
+            campoHora.value !== "" &&
+            (!slots.includes(campoHora.value) || (duracaoMinutos != null && slotIndisponivel(campoHora.value, duracaoMinutos, ocupados)))
+        ) {
             campoHora.onChange("");
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -197,7 +215,7 @@ function LinhaRecorrencia({
                 <label htmlFor={`recorrencia-dia-${index}`}>Dia da semana</label>
                 <select id={`recorrencia-dia-${index}`} {...register(`recorrencias.${index}.diaSemana`, { required: "Selecione o dia" })}>
                     <option value="">Selecione...</option>
-                    {DIAS_SEMANA.map((dia) => (
+                    {DIAS_SEMANA_AULA.map((dia) => (
                         <option key={dia} value={dia}>
                             {DIA_SEMANA_LABELS[dia]}
                         </option>
@@ -213,7 +231,7 @@ function LinhaRecorrencia({
                 )}
                 {diaSemana !== "" && (
                     <GradeDeHorarios
-                        slots={SLOTS}
+                        slots={slots}
                         valorSelecionado={campoHora.value}
                         onSelecionar={campoHora.onChange}
                         ehBloqueado={(slot) => duracaoMinutos == null || slotIndisponivel(slot, duracaoMinutos, ocupados)}

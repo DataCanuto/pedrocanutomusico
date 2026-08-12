@@ -82,7 +82,7 @@ public class TurmaService {
         if (!isInstrumento && dto.instrumento() != null) {
             throw new RegraDeNegocioException("instrumento só se aplica à categoria AULA_INSTRUMENTO");
         }
-        validator.validarHorario(dto.hora());
+        validator.validarHorarioDeAula(dto.diaSemana(), dto.hora());
         agendamentoService.validarDisponibilidadeDeNovaTurma(dto.diaSemana(), dto.hora(), dto.categoria());
 
         Turma turma = turmaMapper.toEntity(dto);

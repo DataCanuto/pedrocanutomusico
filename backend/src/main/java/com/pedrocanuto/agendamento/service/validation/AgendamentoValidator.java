@@ -6,6 +6,8 @@ import com.pedrocanuto.agendamento.domain.enums.ETipoEvento;
 import com.pedrocanuto.agendamento.dto.request.AgendamentoRequestDTO;
 import com.pedrocanuto.agendamento.dto.request.HorarioRecorrenteRequestDTO;
 import com.pedrocanuto.agendamento.exception.RegraDeNegocioException;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.List;
@@ -23,6 +25,7 @@ public class AgendamentoValidator {
 
     private static final LocalTime INICIO_EXPEDIENTE = LocalTime.of(8, 0);
     private static final LocalTime FIM_EXPEDIENTE = LocalTime.of(18, 0);
+    private static final LocalTime FIM_EXPEDIENTE_SABADO = LocalTime.of(13, 0);
     private static final int GRADE_MINUTOS = 15;
 
     public void validarCamposPorCategoria(AgendamentoRequestDTO dto) {
@@ -40,11 +43,42 @@ public class AgendamentoValidator {
         }
     }
 
-    /** Horário só pode ser um dos slots de 08h às 18h, de 15 em 15 minutos - usado também na inscrição em Turma. */
+    /**
+     * Horário só pode ser um dos slots de 08h às 18h, de 15 em 15 minutos, sem restrição de dia da
+     * semana. Só se aplica à categoria EVENTO - eventos podem ser marcados em qualquer dia
+     * disponível (inclusive domingo), diferente das categorias de aula - ver
+     * {@link #validarHorarioDeAula}.
+     */
     public void validarHorario(LocalTime hora) {
+        validarGrade(hora);
         if (hora.isBefore(INICIO_EXPEDIENTE) || hora.isAfter(FIM_EXPEDIENTE)) {
             throw new RegraDeNegocioException("Horário deve estar entre %s e %s".formatted(INICIO_EXPEDIENTE, FIM_EXPEDIENTE));
         }
+    }
+
+    /**
+     * Expediente das categorias de aula (Musicalização, Musicoterapia, Aula de Instrumento):
+     * segunda a sexta das 08h às 18h, sábado das 08h às 13h, sem atendimento aos domingos (nesse
+     * caso só EVENTO pode ser marcado - ver {@link #validarHorario}).
+     */
+    public void validarHorarioDeAula(DayOfWeek diaSemana, LocalTime hora) {
+        validarGrade(hora);
+        LocalTime fimExpediente = switch (diaSemana) {
+            case SUNDAY -> throw new RegraDeNegocioException(
+                    "Não há expediente de aulas aos domingos - disponível apenas para categoria EVENTO");
+            case SATURDAY -> FIM_EXPEDIENTE_SABADO;
+            default -> FIM_EXPEDIENTE;
+        };
+        if (hora.isBefore(INICIO_EXPEDIENTE) || hora.isAfter(fimExpediente)) {
+            throw new RegraDeNegocioException("Horário deve estar entre %s e %s".formatted(INICIO_EXPEDIENTE, fimExpediente));
+        }
+    }
+
+    public void validarHorarioDeAula(LocalDate data, LocalTime hora) {
+        validarHorarioDeAula(data.getDayOfWeek(), hora);
+    }
+
+    private void validarGrade(LocalTime hora) {
         if (hora.getSecond() != 0 || hora.getNano() != 0 || hora.getMinute() % GRADE_MINUTOS != 0) {
             throw new RegraDeNegocioException("Horário deve ser em intervalos de %d minutos (ex.: 08:00, 08:15, 08:30...)".formatted(GRADE_MINUTOS));
         }
@@ -120,7 +154,7 @@ public class AgendamentoValidator {
             if (dto.recorrencias() != null && !dto.recorrencias().isEmpty()) {
                 throw new RegraDeNegocioException("tipoContratacao AVULSO não deve informar recorrencias");
             }
-            validarHorario(dto.hora());
+            validarHorarioDeAula(dto.data(), dto.hora());
             return;
         }
         if (dto.data() != null || dto.hora() != null) {
@@ -132,7 +166,7 @@ public class AgendamentoValidator {
         }
         Set<HorarioRecorrenteRequestDTO> semDuplicados = new HashSet<>();
         for (HorarioRecorrenteRequestDTO recorrencia : recorrencias) {
-            validarHorario(recorrencia.hora());
+            validarHorarioDeAula(recorrencia.diaSemana(), recorrencia.hora());
             if (!semDuplicados.add(recorrencia)) {
                 throw new RegraDeNegocioException(
                         "Dia da semana/horário duplicado em recorrencias: %s %s".formatted(recorrencia.diaSemana(), recorrencia.hora()));

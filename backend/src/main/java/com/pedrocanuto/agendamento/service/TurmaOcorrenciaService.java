@@ -93,7 +93,7 @@ public class TurmaOcorrenciaService {
         if (!novaData.equals(ocorrencia.getData()) && turmaOcorrenciaRepository.findByTurmaIdAndData(turmaId, novaData).isPresent()) {
             throw new RegraDeNegocioException("Esta turma já tem uma ocorrência marcada na data informada");
         }
-        agendamentoValidator.validarHorario(novaHora);
+        agendamentoValidator.validarHorarioDeAula(novaData, novaHora);
         Integer duracaoMinutos = precoServicoService.buscarDuracaoDeGrupo(ocorrencia.getTurma().getCategoria());
         agendamentoService.validarDisponibilidadeExcluindo(novaData, novaHora, duracaoMinutos, null, turmaId);
 

@@ -19,12 +19,22 @@ import com.pedrocanuto.agendamento.exception.RegraDeNegocioException;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class AgendamentoValidatorTest {
 
     private final AgendamentoValidator validator = new AgendamentoValidator();
+
+    /**
+     * Data determinística (sempre segunda-feira) para testes de aula que não giram em torno de
+     * regra de dia da semana - evita flakiness por cair num sábado (expediente até 13h) ou domingo
+     * (sem expediente de aula) dependendo do dia em que a suíte roda.
+     */
+    private static LocalDate proximaSegundaFeira() {
+        return LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+    }
 
     @Test
     void aceitaHorariosNaGradeDe15MinutosDentroDoExpediente() {
@@ -47,6 +57,32 @@ class AgendamentoValidatorTest {
                 .hasMessageContaining("08:00");
         assertThatThrownBy(() -> validator.validarHorario(LocalTime.of(18, 15)))
                 .isInstanceOf(RegraDeNegocioException.class);
+    }
+
+    @Test
+    void validarHorarioDeAulaAceitaSegundaASextaDentroDoExpedienteNormal() {
+        assertThatCode(() -> validator.validarHorarioDeAula(DayOfWeek.MONDAY, LocalTime.of(8, 0))).doesNotThrowAnyException();
+        assertThatCode(() -> validator.validarHorarioDeAula(DayOfWeek.FRIDAY, LocalTime.of(18, 0))).doesNotThrowAnyException();
+    }
+
+    @Test
+    void validarHorarioDeAulaAceitaSabadoAteTrezeHoras() {
+        assertThatCode(() -> validator.validarHorarioDeAula(DayOfWeek.SATURDAY, LocalTime.of(8, 0))).doesNotThrowAnyException();
+        assertThatCode(() -> validator.validarHorarioDeAula(DayOfWeek.SATURDAY, LocalTime.of(13, 0))).doesNotThrowAnyException();
+    }
+
+    @Test
+    void validarHorarioDeAulaRejeitaSabadoAposTrezeHoras() {
+        assertThatThrownBy(() -> validator.validarHorarioDeAula(DayOfWeek.SATURDAY, LocalTime.of(13, 15)))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("13:00");
+    }
+
+    @Test
+    void validarHorarioDeAulaRejeitaDomingoEmQualquerHorario() {
+        assertThatThrownBy(() -> validator.validarHorarioDeAula(DayOfWeek.SUNDAY, LocalTime.of(10, 0)))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("domingo");
     }
 
     @Test
@@ -214,7 +250,7 @@ class AgendamentoValidatorTest {
         return new AgendamentoRequestDTO(
                 clienteDTO(), aluno, categoria, modalidade, tipoContratacao, instrumento,
                 null, null, null, null, null, anamnese,
-                LocalDate.now().plusDays(3), LocalTime.of(10, 0), null, null);
+                proximaSegundaFeira(), LocalTime.of(10, 0), null, null);
     }
 
     private AgendamentoRequestDTO pacoteDTO(ETipoContratacao tipoContratacao, List<HorarioRecorrenteRequestDTO> recorrencias) {

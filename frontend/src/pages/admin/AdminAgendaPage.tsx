@@ -326,6 +326,7 @@ function LinhaAgendamento({ agendamento, acoes }: { agendamento: AgendamentoResp
                 <ReagendarForm
                     duracaoMinutos={agendamento.duracaoMinutos}
                     pendente={pendenteReagendar}
+                    ehEvento={agendamento.categoria === "EVENTO"}
                     onReagendar={(data, hora) => {
                         acoes.onReagendar(agendamento.id, data, hora);
                         setReagendando(false);
@@ -381,6 +382,7 @@ function LinhaTurmaOcorrencia({ ocorrencia, acoes }: { ocorrencia: TurmaOcorrenc
                     <ReagendarForm
                         duracaoMinutos={ocorrencia.duracaoMinutos ?? 0}
                         pendente={pendenteReagendar}
+                        ehEvento={false}
                         onReagendar={(novaData, novaHora) => {
                             acoes.onReagendarTurma(ocorrencia.turmaId, ocorrencia.data, novaData, novaHora);
                             setReagendando(false);

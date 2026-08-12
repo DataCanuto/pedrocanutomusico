@@ -395,6 +395,7 @@ function LinhaAgendamentoCliente({
                         <ReagendarForm
                             duracaoMinutos={agendamento.duracaoMinutos}
                             pendente={reagendarMutation.isPending}
+                            ehEvento={agendamento.categoria === "EVENTO"}
                             onReagendar={(data, hora) => reagendarMutation.mutate({ data, hora })}
                             onCancelar={() => setReagendando(false)}
                         />

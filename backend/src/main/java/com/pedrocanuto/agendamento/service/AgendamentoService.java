@@ -238,7 +238,7 @@ public class AgendamentoService {
         if (matriculaService.calcularAulasRestantes(matricula) <= 0) {
             throw new RegraDeNegocioException("Pacote sem aulas restantes - feche um novo pacote para continuar agendando");
         }
-        validator.validarHorario(dto.hora());
+        validator.validarHorarioDeAula(dto.data(), dto.hora());
         validarDisponibilidade(dto.data(), dto.hora(), matricula.getPrecoServico().getDuracaoPadraoMinutos());
 
         Agendamento agendamento = criarAgendamentoIndividual(matricula.getCliente(), matricula.getAluno(), matricula,
@@ -273,6 +273,7 @@ public class AgendamentoService {
         PrecoServico precoServico = precoServicoService.buscarPorCategoriaModalidadeEPacote(
                 matriculaAtual.getPrecoServico().getCategoria(), matriculaAtual.getPrecoServico().getModalidade(), ETipoContratacao.PACOTE_4);
 
+        validator.validarHorarioDeAula(ultimo.getData().getDayOfWeek(), ultimo.getHora());
         List<HorarioRecorrenteRequestDTO> recorrencia =
                 List.of(new HorarioRecorrenteRequestDTO(ultimo.getData().getDayOfWeek(), ultimo.getHora()));
         List<GeradorDeDatasRecorrentes.AgendaSlot> slots = GeradorDeDatasRecorrentes.gerar(
@@ -344,7 +345,11 @@ public class AgendamentoService {
         if (agendamento.getStatus().isTerminal()) {
             throw new RegraDeNegocioException("Não é possível reagendar um compromisso com status " + agendamento.getStatus());
         }
-        validator.validarHorario(novaHora);
+        if (agendamento.getCategoria().isEvento()) {
+            validator.validarHorario(novaHora);
+        } else {
+            validator.validarHorarioDeAula(novaData, novaHora);
+        }
         validarDisponibilidade(novaData, novaHora, agendamento.getDuracaoMinutos(), id, null);
         agendamento.setData(novaData);
         agendamento.setHora(novaHora);

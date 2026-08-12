@@ -40,6 +40,7 @@ import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -328,6 +329,20 @@ class AgendamentoServiceTest {
         return turma;
     }
 
+    /**
+     * Data determinística (sempre segunda-feira, seg-sex 08h-18h liberado) para testes de aula que
+     * não giram em torno de regra de dia da semana - evita que o teste vire flaky por cair num
+     * sábado (expediente até 13h) ou domingo (sem expediente de aula) dependendo do dia em que a
+     * suíte é executada.
+     */
+    private static LocalDate proximaSegundaFeira() {
+        return LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+    }
+
+    private static LocalDate segundaFeiraAnterior() {
+        return LocalDate.now().with(TemporalAdjusters.previous(DayOfWeek.MONDAY));
+    }
+
     private void stubsParaCriarAulaComSucesso() {
         Cliente cliente = new Cliente();
         Aluno aluno = new Aluno();
@@ -354,7 +369,7 @@ class AgendamentoServiceTest {
                 new AlunoRequestDTO("Sofia Souza", LocalDate.now().minusYears(3), null, null));
         return new AgendamentoRequestDTO(clienteDTO(), aluno, ECategoriaServico.MUSICALIZACAO_INFANTIL, EModalidadeServico.INDIVIDUAL,
                 ETipoContratacao.AVULSO, null, null, null, null, null, null, null,
-                LocalDate.now().plusDays(3), hora, null, null);
+                proximaSegundaFeira(), hora, null, null);
     }
 
     @Test
@@ -363,7 +378,7 @@ class AgendamentoServiceTest {
                 new AlunoSelecaoRequestDTO(false, new AlunoRequestDTO("Sofia Souza", LocalDate.now().minusYears(3), null, null)),
                 ECategoriaServico.MUSICALIZACAO_INFANTIL, EModalidadeServico.INDIVIDUAL, ETipoContratacao.AVULSO, null,
                 null, null, null, null, null, null,
-                LocalDate.now().plusDays(3), LocalTime.of(10, 10), null, null);
+                proximaSegundaFeira(), LocalTime.of(10, 10), null, null);
 
         assertThatThrownBy(() -> agendamentoService.criar(dto))
                 .isInstanceOf(RegraDeNegocioException.class)
@@ -494,6 +509,7 @@ class AgendamentoServiceTest {
     void reagendarAtualizaDataEHora() {
         Agendamento agendamento = new Agendamento();
         agendamento.setId(30L);
+        agendamento.setCategoria(ECategoriaServico.MUSICALIZACAO_INFANTIL);
         agendamento.setStatus(EStatusAgendamento.AGENDADO);
         agendamento.setData(LocalDate.now().plusDays(3));
         agendamento.setHora(LocalTime.of(15, 0));
@@ -501,7 +517,7 @@ class AgendamentoServiceTest {
         when(agendamentoRepository.findById(30L)).thenReturn(java.util.Optional.of(agendamento));
         when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of());
 
-        LocalDate novaData = LocalDate.now().plusDays(10);
+        LocalDate novaData = proximaSegundaFeira();
         agendamentoService.reagendar(30L, novaData, LocalTime.of(9, 0));
 
         assertThat(agendamento.getData()).isEqualTo(novaData);
@@ -512,8 +528,9 @@ class AgendamentoServiceTest {
     void reagendarParaMesmaDataDiferenteHoraNaoSeAutoBloqueia() {
         Agendamento agendamento = new Agendamento();
         agendamento.setId(30L);
+        agendamento.setCategoria(ECategoriaServico.MUSICALIZACAO_INFANTIL);
         agendamento.setStatus(EStatusAgendamento.AGENDADO);
-        LocalDate data = LocalDate.now().plusDays(3);
+        LocalDate data = proximaSegundaFeira();
         agendamento.setData(data);
         agendamento.setHora(LocalTime.of(15, 0));
         agendamento.setDuracaoMinutos(50);
@@ -542,6 +559,7 @@ class AgendamentoServiceTest {
     void reagendarRejeitaConflitoComOutroAgendamento() {
         Agendamento agendamento = new Agendamento();
         agendamento.setId(32L);
+        agendamento.setCategoria(ECategoriaServico.MUSICALIZACAO_INFANTIL);
         agendamento.setStatus(EStatusAgendamento.AGENDADO);
         agendamento.setDuracaoMinutos(30);
         when(agendamentoRepository.findById(32L)).thenReturn(java.util.Optional.of(agendamento));
@@ -550,7 +568,7 @@ class AgendamentoServiceTest {
         conflitante.setId(999L);
         when(agendamentoRepository.findByDataAndStatusNot(any(), any())).thenReturn(List.of(conflitante));
 
-        assertThatThrownBy(() -> agendamentoService.reagendar(32L, LocalDate.now().plusDays(5), LocalTime.of(15, 15)))
+        assertThatThrownBy(() -> agendamentoService.reagendar(32L, proximaSegundaFeira(), LocalTime.of(15, 15)))
                 .isInstanceOf(RegraDeNegocioException.class)
                 .hasMessageContaining("intervalo");
     }
@@ -559,6 +577,7 @@ class AgendamentoServiceTest {
     void reagendarRejeitaConflitoComTurma() {
         Agendamento agendamento = new Agendamento();
         agendamento.setId(33L);
+        agendamento.setCategoria(ECategoriaServico.MUSICALIZACAO_INFANTIL);
         agendamento.setStatus(EStatusAgendamento.AGENDADO);
         agendamento.setDuracaoMinutos(30);
         when(agendamentoRepository.findById(33L)).thenReturn(java.util.Optional.of(agendamento));
@@ -567,7 +586,7 @@ class AgendamentoServiceTest {
                 .thenReturn(List.of(turmaAtiva(LocalTime.of(15, 0), ECategoriaServico.AULA_INSTRUMENTO)));
         when(precoServicoService.buscarDuracaoDeGrupo(ECategoriaServico.AULA_INSTRUMENTO)).thenReturn(50);
 
-        assertThatThrownBy(() -> agendamentoService.reagendar(33L, LocalDate.now().plusDays(5), LocalTime.of(15, 15)))
+        assertThatThrownBy(() -> agendamentoService.reagendar(33L, proximaSegundaFeira(), LocalTime.of(15, 15)))
                 .isInstanceOf(RegraDeNegocioException.class)
                 .hasMessageContaining("intervalo");
     }
@@ -607,7 +626,7 @@ class AgendamentoServiceTest {
 
     @Test
     void confirmarRecorrenciaGeraQuatroAulasComDiaHoraEValorDaUltimaSessao() {
-        LocalDate dataUltima = LocalDate.now().minusDays(10);
+        LocalDate dataUltima = segundaFeiraAnterior();
         Cliente cliente = new Cliente();
         cliente.setId(1L);
         Aluno aluno = new Aluno();
@@ -689,7 +708,7 @@ class AgendamentoServiceTest {
 
     @Test
     void confirmarRecorrenciaComConflitoDeHorarioNaoCriaNenhumAgendamento() {
-        LocalDate dataUltima = LocalDate.now().minusDays(10);
+        LocalDate dataUltima = segundaFeiraAnterior();
         Matricula matriculaAtual = matriculaDe(precoMusicoterapiaIndividualAvulso(), ETipoContratacao.AVULSO);
         matriculaAtual.setId(23L);
         matriculaAtual.setCliente(new Cliente());
