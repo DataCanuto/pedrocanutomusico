@@ -7,7 +7,7 @@ function Footer() {
     return (
         <footer className="footer-site" id="footer">
             <div className="container text-center">
-                <h2 className="footer-title">Pedro Canuto Música</h2>
+                <h2 className="footer-title">Pedro Canuto Músico</h2>
                 <p className="footer-subtitle">Aulas de música, musicalização infantil e musicoterapia em Salvador</p>
 
                 <div className="footer-links">
@@ -17,7 +17,7 @@ function Footer() {
                         target="_blank"
                         rel="noopener noreferrer"
                     >
-                        <i className="bi bi-whatsapp"></i> (71) 99995-8950
+                        <i className="bi bi-whatsapp"></i> (71) 99958-8950
                     </a>
                     <a href="mailto:pedrocanuto96@gmail.com" className="footer-link">
                         <i className="bi bi-envelope"></i> pedrocanuto96@gmail.com
