@@ -40,7 +40,7 @@ function Servicos() {
                         </div>
                     </div>
                     <div className="col-12 col-md-6">
-                        <img src={brincatocadeiraImg} className="img-thumbnail d-block mx-auto" alt="brincatocadeira" style={{width:"60%"}}/>
+                        <img src={brincatocadeiraImg} className="img-thumbnail d-block mx-auto" alt="brincatocadeira"/>
                     </div>
                 </div>
 
@@ -65,7 +65,7 @@ function Servicos() {
 
                 <div className="row align-items-center my-5" id="ritossonoros">
                     <div className="col-12 col-md-6">
-                        <img src={mtimg} className="img-thumbnail d-block mx-auto" alt="ritos sonoros" style={{width:"60%"}} />
+                        <img src={mtimg} className="img-thumbnail d-block mx-auto" alt="ritos sonoros"/>
                         <div>
 
                         </div>
