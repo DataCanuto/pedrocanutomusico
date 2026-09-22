@@ -12,7 +12,7 @@ function Servicos() {
         <div>
             <h2 className="text-center my-5">Serviços</h2>
             <div className="container">
-                <div className="row align-items-center my-5" id="musicalizacao">
+                <div className="row align-items-start my-5" id="musicalizacao">
                     <div className="col-12 col-md-6">
                         <h2 className="servicos-title">Musicalização Infantil</h2>
                         <p>A Musicalização Infantil é uma forma de iniciação e alfabetização musical que proporciona à criança o contato com a música por meio de vivências lúdicas, afetivas e estruturadas. Por meio de brincadeiras, canções, movimentos, exploração de sons e instrumentos, a criança desenvolve gradualmente sua percepção e compreensão do universo musical, despertando o interesse, a curiosidade e a expressão por meio da música.</p>
@@ -29,7 +29,7 @@ function Servicos() {
                 </div>
 
 
-                <div className="row align-items-center my-5" id="brincatocadeira">
+                <div className="row align-items-start my-5" id="brincatocadeira">
                     <div className="col-12 col-md-6">
 
                         <div>
@@ -46,7 +46,7 @@ function Servicos() {
 
                 <hr></hr>
 
-                <div className="row align-items-center my-5" id="musicoterapia">
+                <div className="row align-items-start my-5" id="musicoterapia">
                     <div className="col-12 col-md-6">
                         <img src={mtimg2} className="img-thumbnail d-block mx-auto" alt="musicoterapia" />
                         <div>
@@ -63,7 +63,7 @@ function Servicos() {
                     </div>
                 </div>
 
-                <div className="row align-items-center my-5" id="ritossonoros">
+                <div className="row align-items-start my-5" id="ritossonoros">
                     <div className="col-12 col-md-6">
                         <img src={mtimg} className="img-thumbnail d-block mx-auto" alt="ritos sonoros"/>
                         <div>
@@ -84,7 +84,7 @@ function Servicos() {
 
                 <hr></hr>
 
-                <div className="row align-items-center my-5" id="instrumento">
+                <div className="row align-items-start my-5" id="instrumento">
                     <div className="col-12 col-md-6">
                         <h2 className="servicos-title">Aulas de Instrumento</h2>
                         <p>As aulas de instrumento são um espaço para desenvolver musicalidade, técnica e expressão a partir da prática. Trabalho com instrumentos de cordas, canto e percussão, respeitando o ritmo e os objetivos de cada aluno.</p>
@@ -100,7 +100,7 @@ function Servicos() {
                     </div>
                 </div>
 
-                <div className="row align-items-center my-5" id="jornada">
+                <div className="row align-items-start my-5" id="jornada">
                     <div className="col-12 col-md-6">
                         <h2 className="servicos-title">Jornada Percussiva</h2>
                         <p>A Jornada Percussiva é uma experiência de imersão no universo da percussão, construída a partir da exploração de ritmos, instrumentos, corpo e escuta coletiva.</p>
@@ -118,7 +118,7 @@ function Servicos() {
                     </div>
                 </div>
 
-                <div className="row align-items-center my-5" id="eventos">
+                <div className="row align-items-start my-5" id="eventos">
                     <div className="col-12 col-md-6">
 
                         <div>
