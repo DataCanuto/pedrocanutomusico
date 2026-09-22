@@ -1,0 +1,18 @@
+.brinca-hero-bg {
+    background-image: linear-gradient(to right, rgba(255, 166, 0, 0.728), transparent), url('../../assets/brinca-hero.png');
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    min-height: 90vh;
+    display: flex;
+    border: solid 1px black;
+}
+
+.brinca-hero-content{
+    display: flex;
+    flex-direction: column;
+    padding-top: 2rem;
+    padding-left: 4rem;
+    gap: 2rem;
+}
+

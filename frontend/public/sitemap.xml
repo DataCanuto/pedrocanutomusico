@@ -6,7 +6,22 @@
         <priority>1.0</priority>
     </url>
     <url>
-        <loc>https://pedrocanutomusico.vercel.app/agendar</loc>
+        <loc>https://pedrocanutomusico.vercel.app/musicalizacao</loc>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>https://pedrocanutomusico.vercel.app/musicoterapia</loc>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>https://pedrocanutomusico.vercel.app/instrumento</loc>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>https://pedrocanutomusico.vercel.app/eventos</loc>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
