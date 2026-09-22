@@ -2,14 +2,14 @@ function About() {
 
     return (
         <div className="container-fluid">
-            <h2 className="text-center">Sobre...</h2>
+            <h2 className="text-center my-5">Sobre</h2>
 
 
 
             <div id="carouselExampleAutoplaying" className="carousel slide" data-bs-ride="carousel">
                 <div className="carousel-inner">
                     <div className="carousel-item active">
-                        <div className="card mx-auto" style={{ width: "60rem" }}>
+                        <div className="card mx-auto" style={{ width: "min(60rem, 92vw)" }}>
                             <div className="card-body">
                                 <h5 className="card-title">Multi-instrumentista Autodidata</h5>
                                 <h6 className="card-subtitle mb-2 text-body-secondary">Mais de 10 anos de pesquisa, prática e vivência musical.</h6>
@@ -55,7 +55,7 @@ function About() {
                         </div>
                     </div>
                     <div className="carousel-item">
-                        <div className="card mx-auto" style={{ width: "60rem" }}>
+                        <div className="card mx-auto" style={{ width: "min(60rem, 92vw)" }}>
                             <div className="card-body">
                                 <h5 className="card-title">Experiência e Embasamento</h5>
                                 <h6 className="card-subtitle mb-2 text-body-secondary">8 anos de experiência formal em aulas de musicalização infantil.</h6>
@@ -65,7 +65,7 @@ function About() {
                         </div>
                     </div>
                     <div className="carousel-item">
-                        <div className="card mx-auto" style={{ width: "60rem" }}>
+                        <div className="card mx-auto" style={{ width: "min(60rem, 92vw)" }}>
                             <div className="card-body">
                                 <h5 className="card-title">Minha Trajetória Musical</h5>
                                 <h6 className="card-subtitle mb-2 text-body-secondary">Momentos marcantes da minha relação com a música.</h6>

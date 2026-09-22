@@ -1,7 +1,6 @@
 import Hero from "../../components/Hero";
 import Servicos from "../../components/Servicos";
 import About from "../../components/About";
-import Contato from "../../components/Contato";
 
 function Home (){
     return(
@@ -9,8 +8,6 @@ function Home (){
             <Hero />
             <Servicos />
             <About />
-            <Contato />
-
         </div>
     )
 }

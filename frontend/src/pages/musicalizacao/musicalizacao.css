@@ -5,7 +5,6 @@
     background-repeat: no-repeat;
     min-height: 90vh;
     display: flex;
-    border: solid 1px black;
 }
 
 .musicalizacao-hero{
@@ -16,3 +15,15 @@
     gap: 2rem;
 }
 
+@media (max-width: 768px) {
+    .musicalizacao-hero-bg {
+        min-height: 70vh;
+    }
+
+    .musicalizacao-hero {
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+        padding-top: 1.5rem;
+        gap: 1rem;
+    }
+}

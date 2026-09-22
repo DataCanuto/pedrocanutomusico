@@ -1,6 +1,6 @@
-import { useState } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Navbar from "./components/Navbar"
+import Footer from "./components/Footer"
 import Home from './pages/home/Home'
 import Musicalizacao from './pages/musicalizacao/Musicalizacao'
 import Brincatocadeira from './pages/brincatocadeira/Brincatocadeira'
@@ -29,7 +29,9 @@ function App() {
       <Route path="/ritossonoros" element={<RitosSonoros />}></Route>
       <Route path="/eventos" element={<Eventos />}></Route>
     </Routes>
-    
+
+    <Footer />
+
     </BrowserRouter>
   )
 }
