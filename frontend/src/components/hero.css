@@ -11,7 +11,7 @@
     background-size: contain;
     background-position: center;
     background-repeat: no-repeat;
-    min-height: 90vh;
+    min-height: 100vh;
     /* ou a altura que fizer sentido */
     display: flex;
 }

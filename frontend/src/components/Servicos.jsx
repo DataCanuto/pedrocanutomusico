@@ -96,7 +96,7 @@ function Servicos() {
                         </div>
                     </div>
                     <div className="col-12 col-md-6">
-                        <img src={instrumentoimg} className="img-thumbnail d-block mx-auto" alt="aulas de instrumento" style={{width:"80%"}} />
+                        <img src={instrumentoimg} className="img-thumbnail d-block mx-auto" alt="aulas de instrumento"  />
                     </div>
                 </div>
 
@@ -114,7 +114,7 @@ function Servicos() {
                         </div>
                     </div>
                     <div className="col-12 col-md-6">
-                        <img src={jornadaimg} className="img-thumbnail d-block mx-auto" alt="jornada percussiva" style={{width:"80%"}}/>
+                        <img src={jornadaimg} className="img-thumbnail d-block mx-auto" alt="jornada percussiva" />
                     </div>
                 </div>
 
