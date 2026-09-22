@@ -1,7 +1,7 @@
 function ServiceCards() {
     return (
     <div>
-        <div className="container text-center">
+        <div className="container-fluid px-0">
             <div className="row align-items-center">
                 <div className="col-12 col-sm-6">
                     <a href="#musicalizacao" className="btn btn-action" id="btn-muscializacao">Musicalização Infantil</a>

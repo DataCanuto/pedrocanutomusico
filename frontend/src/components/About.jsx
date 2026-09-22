@@ -15,13 +15,6 @@ function About() {
                                 <h6 className="card-subtitle mb-2 text-body-secondary">Mais de 10 anos de pesquisa, prática e vivência musical.</h6>
 
                                 <p className="card-text">
-                                    Aos 12 anos, ganhei de presente do meu pai meu primeiro violão.
-                                    Minha mãe então contratou um professor para que eu pudesse iniciar meus estudos
-                                    no instrumento. A partir daí, a curiosidade pela música me levou a explorar
-                                    diferentes instrumentos, linguagens e possibilidades sonoras.
-                                </p>
-
-                                <p className="card-text">
                                     Ao longo dessa trajetória, tive a oportunidade de tocar em bandas de rock e
                                     experimentar instrumentos elétricos, como guitarra e baixo. O baixo elétrico
                                     se tornou um dos meus favoritos, especialmente pela influência do Red Hot
