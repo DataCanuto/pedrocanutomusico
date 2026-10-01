@@ -31,7 +31,6 @@ import {
 } from '../../agendamento/regras.js'
 import { buscarEnderecoPorCep } from '../../services/cepService.js'
 import { buscarOcupadosDoDia, enviarAgendamento } from '../../services/agendamentoService.js'
-import './agendar.css'
 
 const DIAS_DE_AULA = [1, 2, 3, 4, 5, 6]
 const SEM_OCUPADOS = []
@@ -53,12 +52,25 @@ const PEDIDO_INICIAL = {
     site: '',
 }
 
+/** Pré-seleciona serviço, modalidade, tipo de evento e pacote vindos dos links das páginas (?servico=...&pacote=...). */
+function pedidoDosParametros(parametros) {
+    const categoria = parametros.get('servico')
+    if (!CATEGORIAS[categoria]) return PEDIDO_INICIAL
+    const pedido = { ...PEDIDO_INICIAL, categoria }
+    const modalidade = parametros.get('modalidade')
+    if (MODALIDADES[modalidade]) pedido.modalidade = modalidade
+    const tipoEvento = parametros.get('tipo')
+    if (categoria === 'EVENTO' && TIPOS_EVENTO[tipoEvento]) {
+        pedido.tipoEvento = tipoEvento
+        const pacote = buscarPacoteEvento(parametros.get('pacote'))
+        if (pacote?.tipoEvento === tipoEvento) pedido.pacoteEventoId = pacote.id
+    }
+    return pedido
+}
+
 function Agendar() {
     const [parametros] = useSearchParams()
-    const [pedido, setPedido] = useState(() => {
-        const servico = parametros.get('servico')
-        return CATEGORIAS[servico] ? { ...PEDIDO_INICIAL, categoria: servico } : PEDIDO_INICIAL
-    })
+    const [pedido, setPedido] = useState(() => pedidoDosParametros(parametros))
     const [ocupadosDoDia, setOcupadosDoDia] = useState({ data: '', intervalos: [] })
     const [buscandoCep, setBuscandoCep] = useState(false)
     const [enviando, setEnviando] = useState(false)
@@ -166,314 +178,330 @@ function Agendar() {
         : buscarPacoteEvento(pedido.pacoteEventoId)?.valor
 
     return (
-        <main className="agendar container my-5">
-            <header className="text-center mb-5">
-                <h1 className="agendar-titulo">Agende seu horário</h1>
-                <p className="text-muted">Escolha o serviço, o horário e onde vai ser. O Pedro confirma pelo WhatsApp.</p>
+        <section className="container-site secao">
+            <header className="mx-auto max-w-2xl text-center">
+                <p className="rotulo">Agendamento on-line</p>
+                <h1 className="mt-2 text-4xl sm:text-5xl">Agende seu horário</h1>
+                <p className="mt-4 text-lg text-tinta-suave">Escolha o serviço, o horário e onde vai ser. O Pedro confirma pelo WhatsApp.</p>
             </header>
 
-            <form onSubmit={enviar} noValidate>
-                <div className="row g-4">
-                    <div className="col-12 col-lg-8">
-                        <section className="agendar-etapa">
-                            <h2><span>1</span> Serviço</h2>
-                            <div className="agendar-opcoes">
-                                {Object.entries(CATEGORIAS).map(([chave, categoria]) => (
-                                    <button
-                                        type="button"
-                                        key={chave}
-                                        className={`agendar-opcao ${pedido.categoria === chave ? 'ativa' : ''}`}
-                                        onClick={() => escolherCategoria(chave)}
-                                        aria-pressed={pedido.categoria === chave}
+            <form onSubmit={enviar} noValidate className="mt-12 grid items-start gap-6 lg:grid-cols-[1fr_22rem]">
+                <div className="grid gap-6">
+                    <Etapa numero={1} titulo="Serviço">
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                            {Object.entries(CATEGORIAS).map(([chave, categoria]) => (
+                                <button
+                                    type="button"
+                                    key={chave}
+                                    className={`${opcao(pedido.categoria === chave)} px-2 font-display text-base leading-tight font-bold sm:text-lg`}
+                                    onClick={() => escolherCategoria(chave)}
+                                    aria-pressed={pedido.categoria === chave}
+                                >
+                                    {categoria.nome}
+                                </button>
+                            ))}
+                        </div>
+
+                        {ehAula && (
+                            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                                <Campo rotulo="Modalidade" id="modalidade">
+                                    <select
+                                        id="modalidade"
+                                        className="campo"
+                                        value={pedido.modalidade}
+                                        onChange={(e) => setPedido((a) => ({ ...a, modalidade: e.target.value, tipoContratacao: 'AVULSO' }))}
                                     >
-                                        {categoria.nome}
-                                    </button>
-                                ))}
-                            </div>
-
-                            {ehAula && (
-                                <div className="row g-3 mt-2">
-                                    <div className="col-12 col-md-6">
-                                        <label className="form-label" htmlFor="modalidade">Modalidade</label>
-                                        <select
-                                            id="modalidade"
-                                            className="form-select"
-                                            value={pedido.modalidade}
-                                            onChange={(e) => setPedido((a) => ({ ...a, modalidade: e.target.value, tipoContratacao: 'AVULSO' }))}
-                                        >
-                                            {Object.entries(MODALIDADES).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="col-12 col-md-6">
-                                        <label className="form-label" htmlFor="pacote">Pacote</label>
-                                        <select id="pacote" className="form-select" value={pedido.tipoContratacao} onChange={(e) => atualizar('tipoContratacao', e.target.value)}>
-                                            {Object.entries(precosDaCategoria).map(([chave, preco]) => (
-                                                <option key={chave} value={chave}>
-                                                    {TIPOS_CONTRATACAO[chave].nome} · {formatarValor(preco.valor)} · {preco.duracaoMinutos} min
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    {pedido.categoria === 'AULA_INSTRUMENTO' && (
-                                        <div className="col-12 col-md-6">
-                                            <label className="form-label" htmlFor="instrumento">Instrumento</label>
-                                            <select id="instrumento" className="form-select" value={pedido.instrumento} onChange={(e) => atualizar('instrumento', e.target.value)}>
-                                                <option value="">Escolha</option>
-                                                {Object.entries(INSTRUMENTOS).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}
-                                            </select>
-                                        </div>
-                                    )}
-                                    <div className="col-12 col-md-6">
-                                        <label className="form-label" htmlFor="aluno-nome">Nome de quem vai fazer a aula</label>
-                                        <input id="aluno-nome" className="form-control" value={pedido.aluno.nome} onChange={(e) => atualizarGrupo('aluno', 'nome', e.target.value)} />
-                                    </div>
-                                    <div className="col-6 col-md-3">
-                                        <label className="form-label" htmlFor="aluno-idade">Idade</label>
-                                        <input id="aluno-idade" className="form-control" inputMode="numeric" value={pedido.aluno.idade} onChange={(e) => atualizarGrupo('aluno', 'idade', e.target.value.replace(/\D/g, ''))} />
-                                    </div>
-                                </div>
-                            )}
-
-                            {pedido.categoria === 'EVENTO' && (
-                                <div className="row g-3 mt-2">
-                                    <div className="col-12 col-md-6">
-                                        <label className="form-label" htmlFor="tipo-evento">Tipo de evento</label>
-                                        <select
-                                            id="tipo-evento"
-                                            className="form-select"
-                                            value={pedido.tipoEvento}
-                                            onChange={(e) => setPedido((a) => ({ ...a, tipoEvento: e.target.value, pacoteEventoId: '' }))}
-                                        >
+                                        {Object.entries(MODALIDADES).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}
+                                    </select>
+                                </Campo>
+                                <Campo rotulo="Pacote" id="pacote">
+                                    <select id="pacote" className="campo" value={pedido.tipoContratacao} onChange={(e) => atualizar('tipoContratacao', e.target.value)}>
+                                        {Object.entries(precosDaCategoria).map(([chave, preco]) => (
+                                            <option key={chave} value={chave}>
+                                                {TIPOS_CONTRATACAO[chave].nome} · {formatarValor(preco.valor)} · {preco.duracaoMinutos} min
+                                            </option>
+                                        ))}
+                                    </select>
+                                </Campo>
+                                {pedido.categoria === 'AULA_INSTRUMENTO' && (
+                                    <Campo rotulo="Instrumento" id="instrumento">
+                                        <select id="instrumento" className="campo" value={pedido.instrumento} onChange={(e) => atualizar('instrumento', e.target.value)}>
                                             <option value="">Escolha</option>
-                                            {Object.entries(TIPOS_EVENTO).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}
+                                            {Object.entries(INSTRUMENTOS).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}
                                         </select>
-                                    </div>
-                                    {pacotesDoEvento.length > 0 && (
-                                        <div className="col-12">
-                                            <div className="agendar-pacotes">
-                                                {pacotesDoEvento.map((pacote) => (
-                                                    <button
-                                                        type="button"
-                                                        key={pacote.id}
-                                                        className={`agendar-pacote ${pedido.pacoteEventoId === pacote.id ? 'ativa' : ''}`}
-                                                        onClick={() => atualizar('pacoteEventoId', pacote.id)}
-                                                        aria-pressed={pedido.pacoteEventoId === pacote.id}
-                                                    >
-                                                        <strong>{pacote.nome}</strong>
-                                                        <span>{pacote.descricao}</span>
-                                                        <em>{formatarValor(pacote.valor)}{pacote.duracaoMinutos ? ` · ${pacote.duracaoMinutos} min` : ''}</em>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </section>
+                                    </Campo>
+                                )}
+                                <Campo rotulo="Nome de quem vai fazer a aula" id="aluno-nome">
+                                    <input id="aluno-nome" className="campo" value={pedido.aluno.nome} onChange={(e) => atualizarGrupo('aluno', 'nome', e.target.value)} />
+                                </Campo>
+                                <Campo rotulo="Idade" id="aluno-idade">
+                                    <input id="aluno-idade" className="campo" inputMode="numeric" value={pedido.aluno.idade} onChange={(e) => atualizarGrupo('aluno', 'idade', e.target.value.replace(/\D/g, ''))} />
+                                </Campo>
+                            </div>
+                        )}
 
-                        {pedido.categoria && (
-                            <section className="agendar-etapa">
-                                <h2><span>2</span> Data e horário</h2>
-                                {ehPacote ? (
-                                    <>
-                                        <p className="text-muted small">
-                                            Escolha até {MAXIMO_RECORRENCIAS} dias fixos na semana. Aulas de segunda a sexta das 08h às 18h e sábado das 08h às 13h.
-                                        </p>
+                        {pedido.categoria === 'EVENTO' && (
+                            <div className="mt-6 grid gap-4">
+                                <Campo rotulo="Tipo de evento" id="tipo-evento">
+                                    <select
+                                        id="tipo-evento"
+                                        className="campo sm:max-w-sm"
+                                        value={pedido.tipoEvento}
+                                        onChange={(e) => setPedido((a) => ({ ...a, tipoEvento: e.target.value, pacoteEventoId: '' }))}
+                                    >
+                                        <option value="">Escolha</option>
+                                        {Object.entries(TIPOS_EVENTO).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}
+                                    </select>
+                                </Campo>
+                                {pacotesDoEvento.length > 0 && (
+                                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                                        {pacotesDoEvento.map((pacote) => (
+                                            <button
+                                                type="button"
+                                                key={pacote.id}
+                                                className={`${opcao(pedido.pacoteEventoId === pacote.id)} flex flex-col gap-1 text-left`}
+                                                onClick={() => atualizar('pacoteEventoId', pacote.id)}
+                                                aria-pressed={pedido.pacoteEventoId === pacote.id}
+                                            >
+                                                <strong className="font-display text-lg">{pacote.nome}</strong>
+                                                <span className="text-sm text-tinta-suave">{pacote.descricao}</span>
+                                                <span className="mt-auto pt-1 font-bold text-marca">
+                                                    {formatarValor(pacote.valor)}{pacote.duracaoMinutos ? ` · ${pacote.duracaoMinutos} min` : ''}
+                                                </span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </Etapa>
+
+                    {pedido.categoria && (
+                        <Etapa numero={2} titulo="Data e horário">
+                            {ehPacote ? (
+                                <>
+                                    <p className="text-sm text-tinta-suave">
+                                        Escolha até {MAXIMO_RECORRENCIAS} dias fixos na semana. Aulas de segunda a sexta das 08h às 18h e sábado das 08h às 13h.
+                                    </p>
+                                    <div className="mt-4 grid gap-3">
                                         {pedido.recorrencias.map((recorrencia, indice) => (
-                                            <div className="row g-2 align-items-end mb-2" key={indice}>
-                                                <div className="col-5">
-                                                    <label className="form-label small" htmlFor={`dia-${indice}`}>Dia</label>
-                                                    <select id={`dia-${indice}`} className="form-select" value={recorrencia.diaSemana} onChange={(e) => atualizarRecorrencia(indice, 'diaSemana', Number(e.target.value))}>
+                                            <div className="grid grid-cols-[1fr_1fr_auto] items-end gap-3" key={indice}>
+                                                <Campo rotulo="Dia" id={`dia-${indice}`}>
+                                                    <select id={`dia-${indice}`} className="campo" value={recorrencia.diaSemana} onChange={(e) => atualizarRecorrencia(indice, 'diaSemana', Number(e.target.value))}>
                                                         {DIAS_DE_AULA.map((dia) => <option key={dia} value={dia}>{DIAS_SEMANA[dia]}</option>)}
                                                     </select>
-                                                </div>
-                                                <div className="col-5">
-                                                    <label className="form-label small" htmlFor={`hora-${indice}`}>Horário</label>
-                                                    <select id={`hora-${indice}`} className="form-select" value={recorrencia.hora} onChange={(e) => atualizarRecorrencia(indice, 'hora', e.target.value)}>
+                                                </Campo>
+                                                <Campo rotulo="Horário" id={`hora-${indice}`}>
+                                                    <select id={`hora-${indice}`} className="campo" value={recorrencia.hora} onChange={(e) => atualizarRecorrencia(indice, 'hora', e.target.value)}>
                                                         <option value="">--:--</option>
                                                         {horariosDoDiaDaSemana(pedido.categoria, recorrencia.diaSemana).map((hora) => <option key={hora} value={hora}>{hora}</option>)}
                                                     </select>
-                                                </div>
-                                                <div className="col-2">
-                                                    {pedido.recorrencias.length > 1 && (
-                                                        <button type="button" className="btn btn-outline-secondary w-100" aria-label="Remover dia" onClick={() => atualizar('recorrencias', pedido.recorrencias.filter((_, i) => i !== indice))}>
-                                                            <i className="bi bi-x-lg"></i>
-                                                        </button>
-                                                    )}
-                                                </div>
+                                                </Campo>
+                                                <button
+                                                    type="button"
+                                                    className={`mb-0.5 inline-flex size-11 items-center justify-center rounded-xl border border-tinta/15 text-tinta-suave hover:border-marca hover:text-marca ${pedido.recorrencias.length > 1 ? '' : 'invisible'}`}
+                                                    aria-label="Remover dia"
+                                                    onClick={() => atualizar('recorrencias', pedido.recorrencias.filter((_, i) => i !== indice))}
+                                                >
+                                                    <i className="bi bi-x-lg" aria-hidden="true"></i>
+                                                </button>
                                             </div>
                                         ))}
-                                        {pedido.recorrencias.length < MAXIMO_RECORRENCIAS && (
-                                            <button type="button" className="btn btn-link px-0" onClick={() => atualizar('recorrencias', [...pedido.recorrencias, { diaSemana: 1, hora: '' }])}>
-                                                + Adicionar outro dia
-                                            </button>
-                                        )}
-                                        {pedido.recorrencias.every((r) => r.hora) && agenda.erros.length > 0 && (
-                                            <div className="alert alert-warning small mt-2" role="alert">{agenda.erros[0]}</div>
-                                        )}
-                                        <div className="col-12 col-md-6 mt-3">
-                                            <label className="form-label" htmlFor="inicio-pacote">Começar a partir de (opcional)</label>
-                                            <input id="inicio-pacote" type="date" className="form-control" min={amanha} value={pedido.data} onChange={(e) => atualizar('data', e.target.value)} />
-                                        </div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="col-12 col-md-6">
-                                            <label className="form-label" htmlFor="data">Data</label>
-                                            <input id="data" type="date" className="form-control" min={amanha} value={pedido.data} onChange={(e) => setPedido((a) => ({ ...a, data: e.target.value, hora: '' }))} />
-                                        </div>
-                                        {pedido.data && (
-                                            <div className="agendar-horarios mt-3" role="group" aria-label="Horários disponíveis">
-                                                {horariosLivres.length === 0 && (
-                                                    <p className="text-muted">
-                                                        {ehAula && new Date(`${pedido.data}T00:00:00Z`).getUTCDay() === 0
-                                                            ? 'Não há aulas aos domingos. Escolha outro dia.'
-                                                            : 'Sem horários livres nesse dia. Escolha outra data.'}
-                                                    </p>
-                                                )}
-                                                {horariosLivres.map((hora) => (
-                                                    <button
-                                                        type="button"
-                                                        key={hora}
-                                                        className={`agendar-horario ${pedido.hora === hora ? 'ativa' : ''}`}
-                                                        onClick={() => atualizar('hora', hora)}
-                                                        aria-pressed={pedido.hora === hora}
-                                                    >
-                                                        {hora}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </>
-                                )}
-                            </section>
-                        )}
-
-                        {pedido.categoria && (
-                            <section className="agendar-etapa">
-                                <h2><span>3</span> Seus dados e endereço</h2>
-                                <div className="row g-3">
-                                    <div className="col-12 col-md-6">
-                                        <label className="form-label" htmlFor="cliente-nome">Seu nome</label>
-                                        <input id="cliente-nome" className="form-control" autoComplete="name" value={pedido.cliente.nome} onChange={(e) => atualizarGrupo('cliente', 'nome', e.target.value)} />
                                     </div>
-                                    <div className="col-12 col-md-6">
-                                        <label className="form-label" htmlFor="cliente-telefone">WhatsApp com DDD</label>
-                                        <input id="cliente-telefone" className="form-control" type="tel" autoComplete="tel" placeholder="(71) 90000-0000" value={pedido.cliente.telefone} onChange={(e) => atualizarGrupo('cliente', 'telefone', e.target.value)} />
-                                    </div>
-                                    <div className="col-12 col-md-6">
-                                        <label className="form-label" htmlFor="cliente-email">E-mail (opcional)</label>
-                                        <input id="cliente-email" className="form-control" type="email" autoComplete="email" value={pedido.cliente.email} onChange={(e) => atualizarGrupo('cliente', 'email', e.target.value)} />
-                                    </div>
-                                    <div className="col-12 col-md-6">
-                                        <label className="form-label" htmlFor="cep">CEP {buscandoCep && <small className="text-muted">buscando…</small>}</label>
-                                        <input id="cep" className="form-control" inputMode="numeric" autoComplete="postal-code" placeholder="40000-000" value={pedido.endereco.cep} onChange={(e) => preencherPorCep(e.target.value)} />
-                                    </div>
-                                    <div className="col-12 col-md-8">
-                                        <label className="form-label" htmlFor="rua">Rua</label>
-                                        <input id="rua" className="form-control" value={pedido.endereco.rua} onChange={(e) => atualizarGrupo('endereco', 'rua', e.target.value)} />
-                                    </div>
-                                    <div className="col-6 col-md-4">
-                                        <label className="form-label" htmlFor="numero">Número</label>
-                                        <input id="numero" className="form-control" value={pedido.endereco.numero} onChange={(e) => atualizarGrupo('endereco', 'numero', e.target.value)} />
-                                    </div>
-                                    <div className="col-6 col-md-3">
-                                        <label className="form-label" htmlFor="complemento">Complemento</label>
-                                        <input id="complemento" className="form-control" value={pedido.endereco.complemento} onChange={(e) => atualizarGrupo('endereco', 'complemento', e.target.value)} />
-                                    </div>
-                                    <div className="col-12 col-md-4">
-                                        <label className="form-label" htmlFor="bairro">Bairro</label>
-                                        <input id="bairro" className="form-control" value={pedido.endereco.bairro} onChange={(e) => atualizarGrupo('endereco', 'bairro', e.target.value)} />
-                                    </div>
-                                    <div className="col-8 col-md-3">
-                                        <label className="form-label" htmlFor="cidade">Cidade</label>
-                                        <input id="cidade" className="form-control" value={pedido.endereco.cidade} onChange={(e) => atualizarGrupo('endereco', 'cidade', e.target.value)} />
-                                    </div>
-                                    <div className="col-4 col-md-2">
-                                        <label className="form-label" htmlFor="estado">UF</label>
-                                        <input id="estado" className="form-control" maxLength={2} value={pedido.endereco.estado} onChange={(e) => atualizarGrupo('endereco', 'estado', e.target.value.toUpperCase())} />
-                                    </div>
-                                    <div className="col-12">
-                                        <label className="form-label" htmlFor="observacoes">Observações (opcional)</label>
-                                        <textarea id="observacoes" className="form-control" rows={3} placeholder="Algo que o Pedro deva saber antes do encontro?" value={pedido.observacoes} onChange={(e) => atualizar('observacoes', e.target.value)} />
-                                    </div>
-                                    <div className="agendar-armadilha" aria-hidden="true">
-                                        <label htmlFor="site">Site</label>
-                                        <input id="site" tabIndex={-1} autoComplete="off" value={pedido.site} onChange={(e) => atualizar('site', e.target.value)} />
-                                    </div>
-                                </div>
-                            </section>
-                        )}
-                    </div>
-
-                    <aside className="col-12 col-lg-4">
-                        <div className="agendar-resumo">
-                            <h2>Resumo</h2>
-                            {!pedido.categoria && <p className="text-muted">Escolha um serviço para começar.</p>}
-                            {pedido.categoria && (
-                                <dl>
-                                    <dt>Serviço</dt>
-                                    <dd>{CATEGORIAS[pedido.categoria].nome}</dd>
-                                    {ehAula && (<><dt>Pacote</dt><dd>{TIPOS_CONTRATACAO[pedido.tipoContratacao]?.nome} · {MODALIDADES[pedido.modalidade]}</dd></>)}
-                                    {pedido.pacoteEventoId && (<><dt>Pacote</dt><dd>{buscarPacoteEvento(pedido.pacoteEventoId)?.nome}</dd></>)}
-                                    {(ehAula || pedido.pacoteEventoId) && (<><dt>Valor</dt><dd>{formatarValor(valor)}</dd></>)}
-                                    {slots.length > 0 && (
-                                        <>
-                                            <dt>{slots.length > 1 ? `${slots.length} encontros` : 'Quando'}</dt>
-                                            <dd>
-                                                <ul className="list-unstyled mb-0">
-                                                    {slots.map((slot) => (
-                                                        <li key={`${slot.data}-${slot.hora}`}>
-                                                            {DIAS_SEMANA[new Date(`${slot.data}T00:00:00Z`).getUTCDay()].slice(0, 3)}, {formatarData(slot.data)} às {slot.hora}
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </dd>
-                                        </>
+                                    {pedido.recorrencias.length < MAXIMO_RECORRENCIAS && (
+                                        <button type="button" className="mt-3 font-bold text-marca hover:underline" onClick={() => atualizar('recorrencias', [...pedido.recorrencias, { diaSemana: 1, hora: '' }])}>
+                                            + Adicionar outro dia
+                                        </button>
                                     )}
-                                </dl>
+                                    {pedido.recorrencias.every((r) => r.hora) && agenda.erros.length > 0 && (
+                                        <p className="mt-3 rounded-xl bg-girassol/20 px-4 py-3 text-sm" role="alert">{agenda.erros[0]}</p>
+                                    )}
+                                    <div className="mt-4 sm:max-w-xs">
+                                        <Campo rotulo="Começar a partir de (opcional)" id="inicio-pacote">
+                                            <input id="inicio-pacote" type="date" className="campo" min={amanha} value={pedido.data} onChange={(e) => atualizar('data', e.target.value)} />
+                                        </Campo>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="sm:max-w-xs">
+                                        <Campo rotulo="Data" id="data">
+                                            <input id="data" type="date" className="campo" min={amanha} value={pedido.data} onChange={(e) => setPedido((a) => ({ ...a, data: e.target.value, hora: '' }))} />
+                                        </Campo>
+                                    </div>
+                                    {pedido.data && (
+                                        <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(5rem,1fr))] gap-2" role="group" aria-label="Horários disponíveis">
+                                            {horariosLivres.length === 0 && (
+                                                <p className="col-span-full text-tinta-suave">
+                                                    {ehAula && new Date(`${pedido.data}T00:00:00Z`).getUTCDay() === 0
+                                                        ? 'Não há aulas aos domingos. Escolha outro dia.'
+                                                        : 'Sem horários livres nesse dia. Escolha outra data.'}
+                                                </p>
+                                            )}
+                                            {horariosLivres.map((hora) => (
+                                                <button
+                                                    type="button"
+                                                    key={hora}
+                                                    className={`${opcao(pedido.hora === hora)} px-2 py-2 font-bold`}
+                                                    onClick={() => atualizar('hora', hora)}
+                                                    aria-pressed={pedido.hora === hora}
+                                                >
+                                                    {hora}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
                             )}
+                        </Etapa>
+                    )}
 
-                            {mostrarErros && erros.length > 0 && (
-                                <div className="alert alert-warning small" role="alert">
-                                    <ul className="mb-0 ps-3">{erros.map((mensagem) => <li key={mensagem}>{mensagem}</li>)}</ul>
+                    {pedido.categoria && (
+                        <Etapa numero={3} titulo="Seus dados e endereço">
+                            <div className="grid grid-cols-2 gap-4 sm:grid-cols-6">
+                                <Campo rotulo="Seu nome" id="cliente-nome" classe="col-span-2 sm:col-span-3">
+                                    <input id="cliente-nome" className="campo" autoComplete="name" value={pedido.cliente.nome} onChange={(e) => atualizarGrupo('cliente', 'nome', e.target.value)} />
+                                </Campo>
+                                <Campo rotulo="WhatsApp com DDD" id="cliente-telefone" classe="col-span-2 sm:col-span-3">
+                                    <input id="cliente-telefone" className="campo" type="tel" autoComplete="tel" placeholder="(71) 90000-0000" value={pedido.cliente.telefone} onChange={(e) => atualizarGrupo('cliente', 'telefone', e.target.value)} />
+                                </Campo>
+                                <Campo rotulo="E-mail (opcional)" id="cliente-email" classe="col-span-2 sm:col-span-3">
+                                    <input id="cliente-email" className="campo" type="email" autoComplete="email" value={pedido.cliente.email} onChange={(e) => atualizarGrupo('cliente', 'email', e.target.value)} />
+                                </Campo>
+                                <Campo rotulo={buscandoCep ? 'CEP (buscando…)' : 'CEP'} id="cep" classe="col-span-2 sm:col-span-3">
+                                    <input id="cep" className="campo" inputMode="numeric" autoComplete="postal-code" placeholder="40000-000" value={pedido.endereco.cep} onChange={(e) => preencherPorCep(e.target.value)} />
+                                </Campo>
+                                <Campo rotulo="Rua" id="rua" classe="col-span-2 sm:col-span-4">
+                                    <input id="rua" className="campo" value={pedido.endereco.rua} onChange={(e) => atualizarGrupo('endereco', 'rua', e.target.value)} />
+                                </Campo>
+                                <Campo rotulo="Número" id="numero" classe="sm:col-span-2">
+                                    <input id="numero" className="campo" value={pedido.endereco.numero} onChange={(e) => atualizarGrupo('endereco', 'numero', e.target.value)} />
+                                </Campo>
+                                <Campo rotulo="Complemento" id="complemento" classe="sm:col-span-2">
+                                    <input id="complemento" className="campo" value={pedido.endereco.complemento} onChange={(e) => atualizarGrupo('endereco', 'complemento', e.target.value)} />
+                                </Campo>
+                                <Campo rotulo="Bairro" id="bairro" classe="col-span-2 sm:col-span-2">
+                                    <input id="bairro" className="campo" value={pedido.endereco.bairro} onChange={(e) => atualizarGrupo('endereco', 'bairro', e.target.value)} />
+                                </Campo>
+                                <Campo rotulo="Cidade" id="cidade" classe="sm:col-span-1">
+                                    <input id="cidade" className="campo" value={pedido.endereco.cidade} onChange={(e) => atualizarGrupo('endereco', 'cidade', e.target.value)} />
+                                </Campo>
+                                <Campo rotulo="UF" id="estado" classe="sm:col-span-1">
+                                    <input id="estado" className="campo" maxLength={2} value={pedido.endereco.estado} onChange={(e) => atualizarGrupo('endereco', 'estado', e.target.value.toUpperCase())} />
+                                </Campo>
+                                <Campo rotulo="Observações (opcional)" id="observacoes" classe="col-span-2 sm:col-span-6">
+                                    <textarea id="observacoes" className="campo" rows={3} placeholder="Algo que o Pedro deva saber antes do encontro?" value={pedido.observacoes} onChange={(e) => atualizar('observacoes', e.target.value)} />
+                                </Campo>
+                                <div className="absolute -left-[9999px] size-px overflow-hidden" aria-hidden="true">
+                                    <label htmlFor="site">Site</label>
+                                    <input id="site" tabIndex={-1} autoComplete="off" value={pedido.site} onChange={(e) => atualizar('site', e.target.value)} />
                                 </div>
-                            )}
-                            {erro && <div className="alert alert-danger small" role="alert">{erro}</div>}
-
-                            <button type="submit" className="btn btn-action w-100 mx-0" disabled={enviando || !pedido.categoria}>
-                                {enviando ? 'Enviando…' : 'Solicitar agendamento'}
-                            </button>
-                            <p className="small text-muted mt-2 mb-0">
-                                O horário fica reservado como pendente até o Pedro confirmar. Prefere conversar antes?{' '}
-                                <a href={`https://wa.me/${WHATSAPP_NUMERO}`} target="_blank" rel="noopener noreferrer">Chame no WhatsApp</a>.
-                            </p>
-                        </div>
-                    </aside>
+                            </div>
+                        </Etapa>
+                    )}
                 </div>
+
+                <aside className="rounded-3xl bg-areia p-6 lg:sticky lg:top-24">
+                    <h2 className="text-2xl">Resumo</h2>
+                    {!pedido.categoria && <p className="mt-2 text-tinta-suave">Escolha um serviço para começar.</p>}
+                    {pedido.categoria && (
+                        <dl className="mt-2 grid gap-3">
+                            <Item rotulo="Serviço">{CATEGORIAS[pedido.categoria].nome}</Item>
+                            {ehAula && <Item rotulo="Pacote">{TIPOS_CONTRATACAO[pedido.tipoContratacao]?.nome} · {MODALIDADES[pedido.modalidade]}</Item>}
+                            {pedido.pacoteEventoId && <Item rotulo="Pacote">{buscarPacoteEvento(pedido.pacoteEventoId)?.nome}</Item>}
+                            {(ehAula || pedido.pacoteEventoId) && <Item rotulo="Valor"><span className="font-display text-xl font-bold text-marca">{formatarValor(valor)}</span></Item>}
+                            {slots.length > 0 && (
+                                <Item rotulo={slots.length > 1 ? `${slots.length} encontros` : 'Quando'}>
+                                    <ul>
+                                        {slots.map((slot) => (
+                                            <li key={`${slot.data}-${slot.hora}`}>
+                                                {DIAS_SEMANA[new Date(`${slot.data}T00:00:00Z`).getUTCDay()].slice(0, 3)}, {formatarData(slot.data)} às {slot.hora}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </Item>
+                            )}
+                        </dl>
+                    )}
+
+                    {mostrarErros && erros.length > 0 && (
+                        <ul className="mt-4 list-disc rounded-xl bg-girassol/25 py-3 pr-4 pl-8 text-sm" role="alert">
+                            {erros.map((mensagem) => <li key={mensagem}>{mensagem}</li>)}
+                        </ul>
+                    )}
+                    {erro && <p className="mt-4 rounded-xl bg-marca/10 px-4 py-3 text-sm text-marca-escura" role="alert">{erro}</p>}
+
+                    <button type="submit" className="btn-primario mt-6 w-full" disabled={enviando || !pedido.categoria}>
+                        {enviando ? 'Enviando…' : 'Solicitar agendamento'}
+                    </button>
+                    <p className="mt-3 text-sm text-tinta-suave">
+                        O horário fica reservado como pendente até o Pedro confirmar. Prefere conversar antes?{' '}
+                        <a href={`https://wa.me/${WHATSAPP_NUMERO}`} target="_blank" rel="noopener noreferrer" className="font-bold text-marca hover:underline">Chame no WhatsApp</a>.
+                    </p>
+                </aside>
             </form>
-        </main>
+        </section>
+    )
+}
+
+const OPCAO_BASE = 'rounded-2xl border-2 p-4 text-tinta transition'
+const OPCAO_INATIVA = `${OPCAO_BASE} border-tinta/10 bg-white hover:border-laranja`
+const OPCAO_ATIVA = `${OPCAO_BASE} border-marca bg-marca/5 ring-4 ring-marca/10`
+
+function opcao(ativa) {
+    return ativa ? OPCAO_ATIVA : OPCAO_INATIVA
+}
+
+function Etapa({ numero, titulo, children }) {
+    return (
+        <section className="cartao sm:p-8">
+            <h2 className="mb-5 flex items-center gap-3 text-2xl">
+                <span className="inline-flex size-9 items-center justify-center rounded-full bg-marca text-lg text-white">{numero}</span>
+                {titulo}
+            </h2>
+            {children}
+        </section>
+    )
+}
+
+function Campo({ rotulo, id, classe = '', children }) {
+    return (
+        <div className={classe}>
+            <label className="campo-rotulo" htmlFor={id}>{rotulo}</label>
+            {children}
+        </div>
+    )
+}
+
+function Item({ rotulo, children }) {
+    return (
+        <div>
+            <dt className="text-xs font-bold tracking-wider text-tinta-suave uppercase">{rotulo}</dt>
+            <dd>{children}</dd>
+        </div>
     )
 }
 
 function Confirmacao({ confirmacao, pedido }) {
     return (
-        <main className="agendar container my-5 text-center">
-            <i className="bi bi-check-circle agendar-sucesso-icone" aria-hidden="true"></i>
-            <h1 className="agendar-titulo mt-3">Pedido recebido!</h1>
-            <p>
-                Obrigado, {pedido.cliente.nome.split(' ')[0]}. Seu horário de {CATEGORIAS[pedido.categoria].nome.toLowerCase()} ficou reservado
-                {confirmacao.slots.length > 1 ? ` para ${confirmacao.slots.length} encontros` : ''} e o Pedro vai confirmar com você.
-            </p>
-            <ul className="list-unstyled">
-                {confirmacao.slots.map((slot) => <li key={`${slot.data}-${slot.hora}`}>{formatarData(slot.data)} às {slot.hora}</li>)}
-            </ul>
-            {confirmacao.whatsapp && (
-                <a href={confirmacao.whatsapp} className="btn btn-action d-inline-flex mx-auto" target="_blank" rel="noopener noreferrer">
-                    <i className="bi bi-whatsapp me-2"></i> Avisar o Pedro no WhatsApp
-                </a>
-            )}
-        </main>
+        <section className="container-site secao">
+            <div className="cartao mx-auto max-w-xl text-center sm:p-10">
+                <i className="bi bi-check-circle-fill text-6xl text-folha" aria-hidden="true"></i>
+                <h1 className="mt-4 text-4xl">Pedido recebido!</h1>
+                <p className="mt-4 text-lg text-tinta-suave">
+                    Obrigado, {pedido.cliente.nome.split(' ')[0]}. Seu horário de {CATEGORIAS[pedido.categoria].nome.toLowerCase()} ficou reservado
+                    {confirmacao.slots.length > 1 ? ` para ${confirmacao.slots.length} encontros` : ''} e o Pedro vai confirmar com você.
+                </p>
+                <ul className="mt-4 font-semibold">
+                    {confirmacao.slots.map((slot) => <li key={`${slot.data}-${slot.hora}`}>{formatarData(slot.data)} às {slot.hora}</li>)}
+                </ul>
+                {confirmacao.whatsapp && (
+                    <a href={confirmacao.whatsapp} className="btn-whatsapp mt-8" target="_blank" rel="noopener noreferrer">
+                        <i className="bi bi-whatsapp" aria-hidden="true"></i> Avisar o Pedro no WhatsApp
+                    </a>
+                )}
+            </div>
+        </section>
     )
 }
 
