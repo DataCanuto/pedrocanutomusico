@@ -9,6 +9,7 @@ import JornadaPercussiva from './pages/jornada-percussiva/JornadaPercussiva'
 import Mt from './pages/mt/Mt'
 import RitosSonoros from './pages/ritos-sonoros/RitosSonoros'
 import Eventos from './pages/eventos/Eventos'
+import Agendar from './pages/agendar/Agendar'
 
 import './App.css'
 
@@ -28,6 +29,7 @@ function App() {
       <Route path="/musicoterapia" element={<Mt />}></Route>
       <Route path="/ritossonoros" element={<RitosSonoros />}></Route>
       <Route path="/eventos" element={<Eventos />}></Route>
+      <Route path="/agendar" element={<Agendar />}></Route>
     </Routes>
 
     <Footer />

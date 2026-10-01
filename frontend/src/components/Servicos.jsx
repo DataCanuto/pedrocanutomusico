@@ -20,7 +20,10 @@ function Servicos() {
                         <p>As aulas acontecem em domicílio, proporcionando à criança uma experiência musical no ambiente em que ela já se sente segura e familiar. Podem ser realizadas individualmente ou em pequenos grupos, de acordo com os objetivos e a dinâmica de cada família.</p>
                         <p>As vivências utilizam um kit diversificado de instrumentos musicais, incluindo instrumentos de percussão, cordas, teclado, sanfoninha e outros recursos sonoros. A criança é estimulada a experimentar, escutar, criar, cantar, tocar e se movimentar, construindo sua relação com a música de maneira ativa e prazerosa.</p>
                         <div>
-                            <Link to="/musicalizacao" className="btn btn-action">Saiba mais</Link>
+                            <div className="d-flex flex-wrap">
+                                <Link to="/musicalizacao" className="btn btn-action">Saiba mais</Link>
+                                <Link to="/agendar?servico=MUSICALIZACAO_INFANTIL" className="btn btn-action">Agendar</Link>
+                            </div>
                         </div>
                     </div>
                     <div className="col-12 col-md-6">
@@ -59,7 +62,10 @@ function Servicos() {
 
                         <p>Minha experiência inclui atendimentos com crianças com autismo e Síndrome de Down, jovens e adultos em demandas relacionadas à ansiedade, concentração e depressão, além do trabalho com idosos, incluindo casos de Alzheimer, Parkinson, solidão e outras condições, sempre buscando favorecer o desenvolvimento, a autonomia, a comunicação e o bem-estar.</p>
 
-                        <Link to="/mt" className="btn btn-action">Saiba mais</Link>
+                        <div className="d-flex flex-wrap">
+                            <Link to="/musicoterapia" className="btn btn-action">Saiba mais</Link>
+                            <Link to="/agendar?servico=MUSICOTERAPIA" className="btn btn-action">Agendar</Link>
+                        </div>
                     </div>
                 </div>
 
@@ -92,7 +98,10 @@ function Servicos() {
                         <p>Mais do que aprender a tocar, a proposta é desenvolver uma relação prática, criativa e significativa com a música, explorando diferentes instrumentos e possibilidades de expressão.</p>
 
                         <div>
-                            <Link to="/instrumento" className="btn btn-action">Saiba mais</Link>
+                            <div className="d-flex flex-wrap">
+                                <Link to="/instrumento" className="btn btn-action">Saiba mais</Link>
+                                <Link to="/agendar?servico=AULA_INSTRUMENTO" className="btn btn-action">Agendar</Link>
+                            </div>
                         </div>
                     </div>
                     <div className="col-12 col-md-6">
@@ -137,6 +146,7 @@ function Servicos() {
                         <p>Vamos criar um evento com música, identidade e experiência?</p>
 
                         
+                        <Link to="/agendar?servico=EVENTO" className="btn btn-action">Solicitar orçamento</Link>
                         <a
                             href="https://wa.me/5571999958950?text=Ol%C3%A1%2C%20Pedro!%20Quero%20saber%20mais%20sobre%20m%C3%BAsica%20para%20eventos."
                             className="btn btn-action"

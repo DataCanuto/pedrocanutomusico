@@ -35,8 +35,8 @@ function Navbar() {
                             <li className="nav-item">
                                 <a className="nav-link" href="#footer">Contato</a>
                             </li>
-                            
                         </ul>
+                        <Link className="btn btn-danger fw-bold ms-lg-auto" to="/agendar">Agendar</Link>
                     </div>
                 </div>
             </nav>
