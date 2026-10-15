@@ -119,13 +119,14 @@ function CarrosselModal({ temporada, onFechar }) {
     const [atual, setAtual] = useState(0)
     const total = temporada.fotos.length
 
+    // Não chamar close() na limpeza: no modo de desenvolvimento (StrictMode) o efeito roda duas vezes,
+    // e o evento "close" fecharia o modal logo depois de abrir. Ao desmontar, o <dialog> sai da tela sozinho.
     useEffect(() => {
         const el = dialogo.current
-        el.showModal()
+        if (!el.open) el.showModal()
         document.documentElement.style.overflow = 'hidden'
         return () => {
             document.documentElement.style.overflow = ''
-            if (el.open) el.close()
         }
     }, [])
 
