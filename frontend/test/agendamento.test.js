@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { generateKeyPairSync } from 'node:crypto'
-import { conflita, gerarDatasRecorrentes, horariosDoDia, normalizarPedido, validarPedido } from '../src/agendamento/regras.js'
+import { conflita, gerarDatasRecorrentes, horariosDoDia, montarMensagemWhatsapp, normalizarPedido, validarPedido } from '../src/agendamento/regras.js'
 import { slotsEmConflito } from '../api/_lib/evento.js'
 import agendamentos from '../api/agendamentos.js'
 import disponibilidade from '../api/disponibilidade.js'
@@ -150,4 +150,12 @@ test('cliente Google assina o JWT e chama freeBusy', async () => {
     } finally {
         globalThis.fetch = fetchOriginal
     }
+})
+
+test('mensagem do WhatsApp já diz se o evento é infantil ou para o público geral', () => {
+    const slots = [{ data: '2026-10-04', hora: '16:00' }]
+    const pedido = (publico) => normalizarPedido({ ...BASE, categoria: 'EVENTO', tipoEvento: 'CARNAVAL', pacoteEventoId: 'carnaval-banda', publico })
+    assert.match(montarMensagemWhatsapp(pedido('INFANTIL'), slots), /^Olá, Pedro! Acabei de pedir pelo site um evento infantil\./)
+    assert.match(montarMensagemWhatsapp(pedido('GERAL'), slots), /^Olá, Pedro! Acabei de pedir pelo site um evento para o público geral\./)
+    assert.match(montarMensagemWhatsapp(pedido('OUTRO'), slots), /^Olá, Pedro! Acabei de pedir um agendamento pelo site\./)
 })

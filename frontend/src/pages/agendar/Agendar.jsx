@@ -6,6 +6,9 @@ import {
     MODALIDADES,
     PACOTES_EVENTO,
     PRECOS_AULAS,
+    PUBLICOS,
+    MENSAGEM_JORNADA_PERCUSSIVA,
+    TIPOS_COM_PUBLICO,
     TIPOS_CONTRATACAO,
     TIPOS_EVENTO,
     WHATSAPP_NUMERO,
@@ -29,6 +32,7 @@ import {
     somarDias,
     validarPedido,
 } from '../../agendamento/regras.js'
+import { whatsappComMensagem } from '../../data/servicos.js'
 import { buscarEnderecoPorCep } from '../../services/cepService.js'
 import { buscarOcupadosDoDia, enviarAgendamento } from '../../services/agendamentoService.js'
 
@@ -42,6 +46,7 @@ const PEDIDO_INICIAL = {
     instrumento: '',
     tipoEvento: '',
     pacoteEventoId: '',
+    publico: '',
     data: '',
     hora: '',
     recorrencias: [{ diaSemana: 1, hora: '' }],
@@ -62,8 +67,11 @@ function pedidoDosParametros(parametros) {
     const tipoEvento = parametros.get('tipo')
     if (categoria === 'EVENTO' && TIPOS_EVENTO[tipoEvento]) {
         pedido.tipoEvento = tipoEvento
+        const publico = parametros.get('publico')
+        if (PUBLICOS[publico]) pedido.publico = publico
         const pacote = buscarPacoteEvento(parametros.get('pacote'))
-        if (pacote?.tipoEvento === tipoEvento) pedido.pacoteEventoId = pacote.id
+        // Nos tipos com público, o pacote (e o valor) só aparece depois da escolha infantil / público geral.
+        if (pacote?.tipoEvento === tipoEvento && (pedido.publico || !TIPOS_COM_PUBLICO.includes(tipoEvento))) pedido.pacoteEventoId = pacote.id
     }
     return pedido
 }
@@ -126,6 +134,7 @@ function Agendar() {
             instrumento: '',
             tipoEvento: '',
             pacoteEventoId: '',
+            publico: '',
             hora: '',
         }))
     }
@@ -172,7 +181,9 @@ function Agendar() {
     }
 
     const precosDaCategoria = PRECOS_AULAS[pedido.categoria]?.[pedido.modalidade] ?? {}
-    const pacotesDoEvento = PACOTES_EVENTO.filter((p) => p.tipoEvento === pedido.tipoEvento)
+    const pedePublico = TIPOS_COM_PUBLICO.includes(pedido.tipoEvento)
+    const soContato = pedido.categoria === 'EVENTO' && pedido.tipoEvento === 'JORNADA_PERCUSSIVA'
+    const pacotesDoEvento = soContato || (pedePublico && !pedido.publico) ? [] : PACOTES_EVENTO.filter((p) => p.tipoEvento === pedido.tipoEvento)
     const valor = ehAula
         ? buscarPrecoAula(pedido.categoria, pedido.modalidade, pedido.tipoContratacao)?.valor
         : buscarPacoteEvento(pedido.pacoteEventoId)?.valor
@@ -247,12 +258,41 @@ function Agendar() {
                                         id="tipo-evento"
                                         className="campo sm:max-w-sm"
                                         value={pedido.tipoEvento}
-                                        onChange={(e) => setPedido((a) => ({ ...a, tipoEvento: e.target.value, pacoteEventoId: '' }))}
+                                        onChange={(e) => setPedido((a) => ({ ...a, tipoEvento: e.target.value, pacoteEventoId: '', publico: '' }))}
                                     >
                                         <option value="">Escolha</option>
                                         {Object.entries(TIPOS_EVENTO).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}
                                     </select>
                                 </Campo>
+                                {pedePublico && (
+                                    <div>
+                                        <p className="campo-rotulo">Para quem é o evento?</p>
+                                        <div className="grid grid-cols-2 gap-3 sm:max-w-sm">
+                                            {Object.entries(PUBLICOS).map(([chave, nome]) => (
+                                                <button
+                                                    type="button"
+                                                    key={chave}
+                                                    className={`${opcao(pedido.publico === chave)} px-2 py-3 font-display text-base font-bold`}
+                                                    onClick={() => atualizar('publico', chave)}
+                                                    aria-pressed={pedido.publico === chave}
+                                                >
+                                                    {nome}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {soContato && (
+                                    <div className="rounded-2xl bg-areia p-5">
+                                        <p className="font-display text-lg font-bold">Jornada percussiva · Sob consulta</p>
+                                        <p className="mt-1 text-tinta-suave">
+                                            A oficina é montada para cada grupo, com ou sem experiência prévia com música. Conte para o Pedro quantas pessoas, onde e quando.
+                                        </p>
+                                        <a href={whatsappComMensagem(MENSAGEM_JORNADA_PERCUSSIVA)} className="btn-whatsapp mt-4" target="_blank" rel="noopener noreferrer">
+                                            <i className="bi bi-whatsapp" aria-hidden="true"></i> Falar com o Pedro
+                                        </a>
+                                    </div>
+                                )}
                                 {pacotesDoEvento.length > 0 && (
                                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                                         {pacotesDoEvento.map((pacote) => (
@@ -276,7 +316,7 @@ function Agendar() {
                         )}
                     </Etapa>
 
-                    {pedido.categoria && (
+                    {pedido.categoria && !soContato && (
                         <Etapa numero={2} titulo="Data e horário">
                             {ehPacote ? (
                                 <>
@@ -356,7 +396,7 @@ function Agendar() {
                         </Etapa>
                     )}
 
-                    {pedido.categoria && (
+                    {pedido.categoria && !soContato && (
                         <Etapa numero={3} titulo="Seus dados e endereço">
                             <div className="grid grid-cols-2 gap-4 sm:grid-cols-6">
                                 <Campo rotulo="Seu nome" id="cliente-nome" classe="col-span-2 sm:col-span-3">
@@ -408,6 +448,7 @@ function Agendar() {
                         <dl className="mt-2 grid gap-3">
                             <Item rotulo="Serviço">{CATEGORIAS[pedido.categoria].nome}</Item>
                             {ehAula && <Item rotulo="Pacote">{TIPOS_CONTRATACAO[pedido.tipoContratacao]?.nome} · {MODALIDADES[pedido.modalidade]}</Item>}
+                            {pedido.tipoEvento && <Item rotulo="Evento">{TIPOS_EVENTO[pedido.tipoEvento]}{pedido.publico ? ` · ${PUBLICOS[pedido.publico]}` : ''}</Item>}
                             {pedido.pacoteEventoId && <Item rotulo="Pacote">{buscarPacoteEvento(pedido.pacoteEventoId)?.nome}</Item>}
                             {(ehAula || pedido.pacoteEventoId) && <Item rotulo="Valor"><span className="font-display text-xl font-bold text-marca">{formatarValor(valor)}</span></Item>}
                             {slots.length > 0 && (
@@ -431,7 +472,7 @@ function Agendar() {
                     )}
                     {erro && <p className="mt-4 rounded-xl bg-marca/10 px-4 py-3 text-sm text-marca-escura" role="alert">{erro}</p>}
 
-                    <button type="submit" className="btn-primario mt-6 w-full" disabled={enviando || !pedido.categoria}>
+                    <button type="submit" className="btn-primario mt-6 w-full" disabled={enviando || !pedido.categoria || soContato}>
                         {enviando ? 'Enviando…' : 'Solicitar agendamento'}
                     </button>
                     <p className="mt-3 text-sm text-tinta-suave">

@@ -16,7 +16,7 @@ function Brincatocadeira() {
                 descricao="Um projeto de música e musicalização que transforma canções, brincadeiras e experiências sonoras em momentos de alegria, interação e descoberta."
                 imagem={imagem}
                 imagemAlt="Ilustração de Pedro tocando violão com crianças em volta da logomarca do Brincatocadeira"
-                agendar="/agendar?servico=EVENTO&tipo=ANIVERSARIO&pacote=brincatocadeira"
+                agendar="/agendar?servico=EVENTO&tipo=ANIVERSARIO&pacote=brincatocadeira&publico=INFANTIL"
                 textoAgendar="Reservar data"
                 mensagemWhatsapp="Olá, Pedro! Quero o Brincatocadeira na minha festa."
             />
@@ -70,7 +70,7 @@ function Brincatocadeira() {
 
             <ChamadaFinal
                 titulo="Que tal uma festa com Brincatocadeira?"
-                agendar="/agendar?servico=EVENTO&tipo=ANIVERSARIO&pacote=brincatocadeira"
+                agendar="/agendar?servico=EVENTO&tipo=ANIVERSARIO&pacote=brincatocadeira&publico=INFANTIL"
                 textoAgendar="Reservar data"
                 mensagemWhatsapp="Olá, Pedro! Quero o Brincatocadeira na minha festa."
             />

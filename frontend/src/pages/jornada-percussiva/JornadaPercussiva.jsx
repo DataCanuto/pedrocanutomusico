@@ -17,7 +17,7 @@ function JornadaPercussiva() {
                 descricao="Uma experiência de imersão no universo da percussão, construída a partir da exploração de ritmos, instrumentos, corpo e escuta coletiva."
                 imagem={imagem}
                 imagemAlt="Ilustração de tambores, maracas e agogô"
-                agendar="/agendar?servico=EVENTO"
+                agendar="/agendar?servico=EVENTO&tipo=JORNADA_PERCUSSIVA"
                 textoAgendar="Pedir orçamento"
                 mensagemWhatsapp="Olá, Pedro! Quero levar a Jornada Percussiva para o meu grupo."
             />
@@ -56,7 +56,7 @@ function JornadaPercussiva() {
             <ChamadaFinal
                 titulo="Leve a Jornada Percussiva para o seu grupo"
                 texto="Escolas, empresas, festas e encontros: conte o formato e o número de participantes para montarmos a vivência."
-                agendar="/agendar?servico=EVENTO"
+                agendar="/agendar?servico=EVENTO&tipo=JORNADA_PERCUSSIVA"
                 textoAgendar="Pedir orçamento"
                 mensagemWhatsapp="Olá, Pedro! Quero levar a Jornada Percussiva para o meu grupo."
             />

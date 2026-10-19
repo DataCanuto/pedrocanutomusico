@@ -7,6 +7,7 @@ import Citacao from '../../components/ui/Citacao'
 import ListaMarcada from '../../components/ui/ListaMarcada'
 import TabelaPrecos from '../../components/ui/TabelaPrecos'
 import ChamadaFinal from '../../components/ui/ChamadaFinal'
+import GaleriaMusicalizacao from './GaleriaMusicalizacao'
 
 const ESTIMULOS = [
     'Imaginação',
@@ -89,6 +90,18 @@ function Musicalizacao() {
             </section>
 
             <section className="secao bg-white">
+                <div className="container-site">
+                    <CabecalhoSecao
+                        rotulo="Galeria"
+                        titulo="Música desde cedo"
+                        descricao="Descobertas, instrumentos e brincadeiras nas aulas de musicalização infantil."
+                        centralizado
+                    />
+                    <GaleriaMusicalizacao />
+                </div>
+            </section>
+
+            <section className="secao">
                 <div className="container-site">
                     <CabecalhoSecao rotulo="Investimento" titulo="Valores" descricao="Aula avulsa para conhecer, ou pacote de 4 aulas com dia e horário fixos na semana." />
                     <div className="mt-8">

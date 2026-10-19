@@ -74,11 +74,22 @@ export const PRECOS_AULAS = {
 export const TIPOS_EVENTO = {
     ANIVERSARIO: 'Aniversário',
     CASAMENTO: 'Casamento',
-    EVENTO_CORPORATIVO: 'Evento corporativo',
+    JORNADA_PERCUSSIVA: 'Jornada percussiva',
     CARNAVAL: 'Carnaval',
     SAO_JOAO: 'São João',
     MUSICOTERAPIA_EVENTO: 'Ritos sonoros / Sound healing',
 }
+
+// Nesses tipos o cliente diz antes se o evento é infantil ou para o público
+// geral. Os pacotes e valores são os mesmos; a escolha só vai na mensagem do WhatsApp.
+export const TIPOS_COM_PUBLICO = ['ANIVERSARIO', 'CARNAVAL', 'SAO_JOAO']
+
+export const PUBLICOS = {
+    INFANTIL: 'Infantil',
+    GERAL: 'Público geral',
+}
+
+export const MENSAGEM_JORNADA_PERCUSSIVA = 'Olá, Pedro! Quero saber mais sobre a Jornada Percussiva para o meu grupo.'
 
 // Pacotes "sob consulta" não têm valor nem duração: o horário fica reservado
 // com DURACAO_EVENTO_SOB_CONSULTA e Pedro ajusta ao confirmar.
@@ -96,7 +107,7 @@ export const PACOTES_EVENTO = [
     { id: 'sao-joao-musico', tipoEvento: 'SAO_JOAO', nome: 'Quadrilha Junina (com músico)', descricao: 'Quadrilha junina para o público infantil, com Pedro Canuto e mais um músico.', valor: 1500, duracaoMinutos: 90 },
     { id: 'sao-joao-banda', tipoEvento: 'SAO_JOAO', nome: 'Quadrilha Junina (com banda)', descricao: 'Quadrilha junina com a banda Brincatocadeira.', valor: 3000, duracaoMinutos: 90 },
     { id: 'casamento', tipoEvento: 'CASAMENTO', nome: 'Casamento', descricao: 'Repertório e formato definidos sob consulta.', valor: null, duracaoMinutos: null },
-    { id: 'corporativo', tipoEvento: 'EVENTO_CORPORATIVO', nome: 'Evento corporativo', descricao: 'Repertório e formato definidos sob consulta.', valor: null, duracaoMinutos: null },
+    { id: 'jornada-percussiva', tipoEvento: 'JORNADA_PERCUSSIVA', nome: 'Jornada percussiva', descricao: 'Oficina de percussão para pessoas com ou sem experiência prévia com música. Formato combinado direto com o Pedro.', valor: null, duracaoMinutos: null, soContato: true },
     { id: 'soundhealing', tipoEvento: 'MUSICOTERAPIA_EVENTO', nome: 'Sound healing com instrumentos xamânicos', descricao: 'Sessão sonora terapêutica em grupo.', valor: null, duracaoMinutos: null },
 ]
 
