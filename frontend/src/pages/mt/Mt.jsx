@@ -6,6 +6,7 @@ import Citacao from '../../components/ui/Citacao'
 import ListaMarcada from '../../components/ui/ListaMarcada'
 import TabelaPrecos from '../../components/ui/TabelaPrecos'
 import ChamadaFinal from '../../components/ui/ChamadaFinal'
+import GaleriaMusicoterapia from './GaleriaMusicoterapia'
 
 const INDICACOES = [
     'Atrasos no desenvolvimento',
@@ -66,6 +67,18 @@ function Mt() {
             <section className="secao">
                 <div className="container-site">
                     <CabecalhoSecao
+                        rotulo="Galeria"
+                        titulo="A música como encontro"
+                        descricao="Registros de atendimentos e ações de musicoterapia. Toque num álbum para ver as fotos."
+                        centralizado
+                    />
+                    <GaleriaMusicoterapia />
+                </div>
+            </section>
+
+            <section className="secao bg-white">
+                <div className="container-site">
+                    <CabecalhoSecao
                         rotulo="Investimento"
                         titulo="Valores das sessões"
                         descricao="Sessões de 50 minutos, individuais ou em grupo. Os pacotes mantêm dia e horário fixos na semana, o que ajuda na continuidade do processo."
@@ -76,7 +89,7 @@ function Mt() {
                 </div>
             </section>
 
-            <section className="secao pt-0">
+            <section className="secao bg-white pt-0">
                 <div className="container-site">
                     <Citacao texto="Quando as palavras falham, a música fala." autor="Hans Christian Andersen" />
                 </div>
