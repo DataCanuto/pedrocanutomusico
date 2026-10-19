@@ -1,8 +1,12 @@
 import { Link } from 'react-router-dom'
-import { PACOTES_EVENTO, TIPOS_EVENTO, formatarValor } from '../../agendamento/catalogo.js'
+import { MENSAGEM_JORNADA_PERCUSSIVA, PACOTES_EVENTO, TIPOS_COM_PUBLICO, TIPOS_EVENTO, formatarValor } from '../../agendamento/catalogo.js'
+import { whatsappComMensagem } from '../../data/servicos.js'
 
-/** Cartões dos pacotes de evento do catálogo, cada um levando ao agendamento já preenchido. */
-function PacotesEvento({ tipos }) {
+/**
+ * Cartões dos pacotes de evento do catálogo, cada um levando ao agendamento já preenchido.
+ * `publico` (INFANTIL ou GERAL) já vai no link dos tipos que pedem essa escolha.
+ */
+function PacotesEvento({ tipos, publico }) {
     const pacotes = PACOTES_EVENTO.filter((pacote) => tipos.includes(pacote.tipoEvento))
     return (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -15,12 +19,20 @@ function PacotesEvento({ tipos }) {
                         <span className="font-display text-2xl font-extrabold text-marca">{formatarValor(pacote.valor)}</span>
                         {pacote.duracaoMinutos && <span className="text-sm text-tinta-suave">{pacote.duracaoMinutos} min</span>}
                     </p>
-                    <Link
-                        to={`/agendar?servico=EVENTO&tipo=${pacote.tipoEvento}&pacote=${pacote.id}`}
-                        className="btn-secundario mt-4 w-full"
-                    >
-                        {pacote.valor == null ? 'Pedir orçamento' : 'Reservar data'}
-                    </Link>
+                    {pacote.soContato ? (
+                        <a href={whatsappComMensagem(MENSAGEM_JORNADA_PERCUSSIVA)} className="btn-secundario mt-4 w-full" target="_blank" rel="noopener noreferrer">
+                            Falar com o Pedro
+                        </a>
+                    ) : (
+                        <Link
+                            to={`/agendar?servico=EVENTO&tipo=${pacote.tipoEvento}&pacote=${pacote.id}${
+                                publico && TIPOS_COM_PUBLICO.includes(pacote.tipoEvento) ? `&publico=${publico}` : ''
+                            }`}
+                            className="btn-secundario mt-4 w-full"
+                        >
+                            {pacote.valor == null ? 'Pedir orçamento' : 'Reservar data'}
+                        </Link>
+                    )}
                 </article>
             ))}
         </div>

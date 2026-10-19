@@ -8,6 +8,7 @@ import {
     DURACAO_EVENTO_SOB_CONSULTA,
     INSTRUMENTOS,
     MODALIDADES,
+    PUBLICOS,
     TIPOS_CONTRATACAO,
     TIPOS_EVENTO,
     buscarPacoteEvento,
@@ -169,6 +170,7 @@ export function normalizarPedido(corpo = {}) {
         instrumento: texto(corpo.instrumento, 20),
         tipoEvento: texto(corpo.tipoEvento, 40),
         pacoteEventoId: texto(corpo.pacoteEventoId, 40),
+        publico: PUBLICOS[corpo.publico] ? corpo.publico : '',
         data: texto(corpo.data, 10),
         hora: texto(corpo.hora, 5),
         recorrencias: Array.isArray(corpo.recorrencias)
@@ -330,7 +332,12 @@ function validarEvento(pedido, primeiraDataPossivel, erros) {
 /** Mensagem pronta para o WhatsApp do Pedro depois que o pedido é registrado. */
 export function montarMensagemWhatsapp(pedido, slots) {
     const servico = CATEGORIAS[pedido.categoria].nome
-    const linhas = [`Olá, Pedro! Acabei de pedir um agendamento pelo site.`, ``, `*Serviço:* ${servico}`]
+    const publico = !ehCategoriaDeAula(pedido.categoria) && PUBLICOS[pedido.publico]
+    const abertura = publico
+        ? `Olá, Pedro! Acabei de pedir pelo site um evento ${pedido.publico === 'INFANTIL' ? 'infantil' : 'para o público geral'}.`
+        : `Olá, Pedro! Acabei de pedir um agendamento pelo site.`
+    const linhas = [abertura, ``, `*Serviço:* ${servico}`]
+    if (publico) linhas.push(`*Público:* ${publico}`)
     if (ehCategoriaDeAula(pedido.categoria)) {
         linhas.push(`*Aluno(a):* ${pedido.aluno.nome}`)
         linhas.push(`*Pacote:* ${TIPOS_CONTRATACAO[pedido.tipoContratacao].nome} (${MODALIDADES[pedido.modalidade]})`)

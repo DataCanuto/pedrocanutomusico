@@ -4,6 +4,7 @@ import BlocoTexto from '../../components/ui/BlocoTexto'
 import CabecalhoSecao from '../../components/ui/CabecalhoSecao'
 import ListaMarcada from '../../components/ui/ListaMarcada'
 import ChamadaFinal from '../../components/ui/ChamadaFinal'
+import GaleriaRitos from './GaleriaRitos'
 
 const ONDE = ['Aulas de yoga', 'Retiros', 'Celebrações', 'Grupos terapêuticos', 'Empresas', 'Encontros de desenvolvimento humano']
 const INSTRUMENTOS = ['Flauta xamânica', 'Sinos', 'Tigelas tibetanas', 'Instrumentos de percussão']
@@ -45,6 +46,18 @@ function RitosSonoros() {
                     <div className="mt-8">
                         <ListaMarcada itens={ONDE} icone="bi-flower1" colunas="sm:grid-cols-2 lg:grid-cols-3" />
                     </div>
+                </div>
+            </section>
+
+            <section className="secao">
+                <div className="container-site">
+                    <CabecalhoSecao
+                        rotulo="Galeria"
+                        titulo="O som como caminho"
+                        descricao="Registros das práticas e sessões de Ritos Sonoros. Toque num álbum para ver as fotos."
+                        centralizado
+                    />
+                    <GaleriaRitos />
                 </div>
             </section>
 

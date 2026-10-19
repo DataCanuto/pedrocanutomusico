@@ -4,6 +4,7 @@ import BlocoTexto from '../../components/ui/BlocoTexto'
 import CabecalhoSecao from '../../components/ui/CabecalhoSecao'
 import PacotesEvento from '../../components/ui/PacotesEvento'
 import ChamadaFinal from '../../components/ui/ChamadaFinal'
+import GaleriaEventos from './GaleriaEventos'
 
 const ATENDEMOS = ['Aniversários', 'Mensários', 'Batizados', 'Escolas', 'Condomínios', 'Shoppings', 'Eventos culturais', 'Festas temáticas']
 const ESPECIAIS = ['Carnaval', 'São João', 'Natal', 'Princesas', 'Super-heróis', 'Capoeira', 'Folclore brasileiro', 'Musicalização para bebês']
@@ -44,14 +45,26 @@ function Eventos() {
 
             <section className="secao bg-white">
                 <div className="container-site">
-                    <CabecalhoSecao rotulo="Festas infantis" titulo="Aniversários, Carnaval e São João" descricao="Escolha o pacote e reserve a data. O Pedro confirma os detalhes com você pelo WhatsApp." />
-                    <div className="mt-8">
-                        <PacotesEvento tipos={['ANIVERSARIO', 'CARNAVAL', 'SAO_JOAO']} />
-                    </div>
+                    <CabecalhoSecao
+                        rotulo="Galeria"
+                        titulo="Música para cada tipo de evento"
+                        descricao="Eventos infantis, música ao vivo, ritos sonoros e jornada percussiva. Toque numa foto para ver mais."
+                        centralizado
+                    />
+                    <GaleriaEventos ancoraMusicaAoVivo="musica-ao-vivo" />
                 </div>
             </section>
 
             <section className="secao">
+                <div className="container-site">
+                    <CabecalhoSecao rotulo="Festas infantis" titulo="Aniversários, Carnaval e São João" descricao="Escolha o pacote e reserve a data. O Pedro confirma os detalhes com você pelo WhatsApp." />
+                    <div className="mt-8">
+                        <PacotesEvento tipos={['ANIVERSARIO', 'CARNAVAL', 'SAO_JOAO']} publico="INFANTIL" />
+                    </div>
+                </div>
+            </section>
+
+            <section id="musica-ao-vivo" className="secao scroll-mt-20 bg-white">
                 <div className="container-site">
                     <BlocoTexto rotulo="Casamentos" titulo="A trilha dos momentos mais importantes">
                         <p>
@@ -60,7 +73,7 @@ function Eventos() {
                         </p>
                     </BlocoTexto>
                     <div className="mt-8">
-                        <PacotesEvento tipos={['CASAMENTO', 'EVENTO_CORPORATIVO', 'MUSICOTERAPIA_EVENTO']} />
+                        <PacotesEvento tipos={['CASAMENTO', 'JORNADA_PERCUSSIVA', 'MUSICOTERAPIA_EVENTO']} />
                     </div>
                 </div>
             </section>

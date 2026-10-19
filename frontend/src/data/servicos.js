@@ -46,7 +46,7 @@ export const SERVICOS = [
         nome: 'Brincatocadeira',
         resumo: 'O show “Que Brincadeira!” e apresentações temáticas que transformam a criança em parte do espetáculo.',
         imagem: brincatocadeiraImg,
-        agendar: '/agendar?servico=EVENTO&tipo=ANIVERSARIO&pacote=brincatocadeira',
+        agendar: '/agendar?servico=EVENTO&tipo=ANIVERSARIO&pacote=brincatocadeira&publico=INFANTIL',
     },
     {
         caminho: '/jornadapercussiva',
