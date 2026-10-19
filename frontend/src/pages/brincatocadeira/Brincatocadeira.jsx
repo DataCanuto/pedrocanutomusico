@@ -1,11 +1,11 @@
 import imagem from '../../assets/web/brincatocadeira-servicos.webp'
-import card from '../../assets/web/brincatocadeira-card.webp'
 import HeroPagina from '../../components/ui/HeroPagina'
 import BlocoTexto from '../../components/ui/BlocoTexto'
 import CabecalhoSecao from '../../components/ui/CabecalhoSecao'
 import PacotesEvento from '../../components/ui/PacotesEvento'
 import ChamadaFinal from '../../components/ui/ChamadaFinal'
 import GaleriaTemporadas from './GaleriaTemporadas'
+import CarrosselCards from './CarrosselCards'
 
 function Brincatocadeira() {
     return (
@@ -26,8 +26,7 @@ function Brincatocadeira() {
                     <BlocoTexto
                         rotulo="O projeto"
                         titulo="A criança no centro do espetáculo"
-                        imagem={card}
-                        imagemAlt="Card do Brincatocadeira: música e animação para a família inteira, com roda de música com a Banda das Crianças e musicalização recreativa"
+                        midia={<CarrosselCards />}
                     >
                         <p>
                             Além do show autoral “Que Brincadeira!”, realizamos apresentações temáticas de temporada, como Carnaval e São João,
