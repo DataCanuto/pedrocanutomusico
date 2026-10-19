@@ -1,8 +1,8 @@
+import { Link } from 'react-router-dom'
 import imagem from '../../assets/web/brincatocadeira-servicos.webp'
 import HeroPagina from '../../components/ui/HeroPagina'
 import BlocoTexto from '../../components/ui/BlocoTexto'
 import CabecalhoSecao from '../../components/ui/CabecalhoSecao'
-import PacotesEvento from '../../components/ui/PacotesEvento'
 import ChamadaFinal from '../../components/ui/ChamadaFinal'
 import GaleriaTemporadas from './GaleriaTemporadas'
 import CarrosselCards from './CarrosselCards'
@@ -54,9 +54,16 @@ function Brincatocadeira() {
 
             <section className="secao">
                 <div className="container-site">
-                    <CabecalhoSecao rotulo="Pacotes" titulo="Valores" />
-                    <div className="mt-8">
-                        <PacotesEvento tipos={['ANIVERSARIO', 'CARNAVAL', 'SAO_JOAO']} />
+                    <CabecalhoSecao
+                        rotulo="Pacotes"
+                        titulo="Valores"
+                        descricao="Os pacotes do Brincatocadeira para aniversários, Carnaval e São João, com valores e duração, estão na página de eventos."
+                        centralizado
+                    />
+                    <div className="mt-8 text-center">
+                        <Link to="/eventos" className="btn-primario">
+                            Ver valores em Eventos
+                        </Link>
                     </div>
                 </div>
             </section>
