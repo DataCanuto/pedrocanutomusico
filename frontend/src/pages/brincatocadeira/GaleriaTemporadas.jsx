@@ -47,9 +47,9 @@ const TEMPORADAS = [
         tag: 'São João',
         etiquetaAmarela: true,
         fotos: [
-            { src: saoJoao1, alt: 'A banda do Brincatocadeira posando no palco, de braços abertos' },
-            { src: saoJoao2, alt: 'Pedro de chapéu e colete azul tocando guitarra no palco' },
-            { src: saoJoao3, alt: 'Retrato da banda do Brincatocadeira figurinada' },
+            { src: saoJoao1, alt: 'A banda do Brincatocadeira e as crianças juntas no palco do Arraiá do Sertão, no Shopping Barra' },
+            { src: saoJoao2, alt: 'A banda tocando no Arraiá do Sertão, com as crianças dançando na frente do palco' },
+            { src: saoJoao3, alt: 'A banda figurinada de São João sorrindo com as crianças no fim do show' },
         ],
     },
     {
