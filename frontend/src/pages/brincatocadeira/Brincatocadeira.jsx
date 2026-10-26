@@ -56,13 +56,13 @@ function Brincatocadeira() {
                 <div className="container-site">
                     <CabecalhoSecao
                         rotulo="Pacotes"
-                        titulo="Valores"
-                        descricao="Os pacotes do Brincatocadeira para aniversários, Carnaval e São João, com valores e duração, estão na página de eventos."
+                        titulo="Pacotes e orçamento"
+                        descricao="Os pacotes do Brincatocadeira para aniversários, Carnaval e São João, estão na página de eventos. Os valores são sob consulta: escolha o formato e o Pedro monta o orçamento com você."
                         centralizado
                     />
                     <div className="mt-8 text-center">
                         <Link to="/eventos" className="btn-primario">
-                            Ver valores em Eventos
+                            Ver pacotes em Eventos
                         </Link>
                     </div>
                 </div>

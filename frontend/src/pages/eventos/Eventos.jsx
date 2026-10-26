@@ -57,7 +57,7 @@ function Eventos() {
 
             <section className="secao">
                 <div className="container-site">
-                    <CabecalhoSecao rotulo="Festas infantis" titulo="Aniversários, Carnaval e São João" descricao="Escolha o pacote e reserve a data. O Pedro confirma os detalhes com você pelo WhatsApp." />
+                    <CabecalhoSecao rotulo="Festas infantis" titulo="Aniversários, Carnaval e São João" descricao="Escolha o pacote e peça seu orçamento. Os valores são sob consulta, e o Pedro confirma os detalhes com você pelo WhatsApp." />
                     <div className="mt-8">
                         <PacotesEvento tipos={['ANIVERSARIO', 'CARNAVAL', 'SAO_JOAO']} publico="INFANTIL" />
                     </div>
