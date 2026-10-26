@@ -51,7 +51,7 @@ export const PRECOS_AULAS = {
     MUSICOTERAPIA: {
         INDIVIDUAL: {
             AVULSO: { valor: 180, duracaoMinutos: 50 },
-            PACOTE_4: { valor: 600, duracaoMinutos: 50 },
+            PACOTE_4: { valor: null, duracaoMinutos: 50 },
             PACOTE_12: { valor: 1700, duracaoMinutos: 50 },
         },
         GRUPO: {
@@ -91,21 +91,22 @@ export const PUBLICOS = {
 
 export const MENSAGEM_JORNADA_PERCUSSIVA = 'Olá, Pedro! Quero saber mais sobre a Jornada Percussiva para o meu grupo.'
 
-// Pacotes "sob consulta" não têm valor nem duração: o horário fica reservado
-// com DURACAO_EVENTO_SOB_CONSULTA e Pedro ajusta ao confirmar.
+// Todos os pacotes de evento são "sob consulta" no site (valor: null): os valores
+// ficam no documento de propostas (docs/valores) e Pedro monta o orçamento por WhatsApp.
+// Pacotes sem duração reservam o horário com DURACAO_EVENTO_SOB_CONSULTA.
 export const DURACAO_EVENTO_SOB_CONSULTA = 120
 
 export const PACOTES_EVENTO = [
-    { id: 'roda-de-musica', tipoEvento: 'ANIVERSARIO', nome: 'Roda de Música', descricao: '1h de apresentação com repertório infantil, brincadeiras musicadas e prática com instrumentos musicais.', valor: 600, duracaoMinutos: 60 },
-    { id: 'brincatocadeira', tipoEvento: 'ANIVERSARIO', nome: 'Brincatocadeira', descricao: 'Animação musical, brincadeiras musicadas, coreografia, karaokê e desafios. A apresentação acontece com um músico ou animador convidado.', valor: 1500, duracaoMinutos: 60 },
-    { id: 'brincatocadeira-banda', tipoEvento: 'ANIVERSARIO', nome: 'Brincatocadeira (com banda)', descricao: 'O Brincatocadeira com banda base: 2 músicos e um animador convidado.', valor: 3000, duracaoMinutos: 90 },
+    { id: 'roda-de-musica', tipoEvento: 'ANIVERSARIO', nome: 'Roda de Música', descricao: '1h de apresentação com repertório infantil, brincadeiras musicadas e prática com instrumentos musicais.', valor: null, duracaoMinutos: 60 },
+    { id: 'brincatocadeira', tipoEvento: 'ANIVERSARIO', nome: 'Brincatocadeira', descricao: 'Animação musical, brincadeiras musicadas, coreografia, karaokê e desafios. A apresentação acontece com um músico ou animador convidado.', valor: null, duracaoMinutos: 60 },
+    { id: 'brincatocadeira-banda', tipoEvento: 'ANIVERSARIO', nome: 'Brincatocadeira (com banda)', descricao: 'O Brincatocadeira com banda base: 2 músicos e um animador convidado.', valor: null, duracaoMinutos: 90 },
     { id: 'monte-seu-show', tipoEvento: 'ANIVERSARIO', nome: 'Monte Seu Show', descricao: 'Show personalizado, montado sob medida com você.', valor: null, duracaoMinutos: null },
-    { id: 'carnaval-solo', tipoEvento: 'CARNAVAL', nome: 'Bailinho de Carnaval (solo)', descricao: 'Bailinho de carnaval para o público infantil, com Pedro Canuto. Inclui equipamento de som.', valor: 1200, duracaoMinutos: 60 },
-    { id: 'carnaval-musico', tipoEvento: 'CARNAVAL', nome: 'Bailinho de Carnaval (com músico)', descricao: 'Bailinho de carnaval para o público infantil, com Pedro Canuto e mais um músico.', valor: 1500, duracaoMinutos: 90 },
-    { id: 'carnaval-banda', tipoEvento: 'CARNAVAL', nome: 'Bailinho de Carnaval (com banda)', descricao: 'Bailinho de carnaval com a banda Brincatocadeira.', valor: 3000, duracaoMinutos: 90 },
-    { id: 'sao-joao-solo', tipoEvento: 'SAO_JOAO', nome: 'Quadrilha Junina (solo)', descricao: 'Quadrilha junina para o público infantil, com Pedro Canuto. Inclui equipamento de som.', valor: 1200, duracaoMinutos: 60 },
-    { id: 'sao-joao-musico', tipoEvento: 'SAO_JOAO', nome: 'Quadrilha Junina (com músico)', descricao: 'Quadrilha junina para o público infantil, com Pedro Canuto e mais um músico.', valor: 1500, duracaoMinutos: 90 },
-    { id: 'sao-joao-banda', tipoEvento: 'SAO_JOAO', nome: 'Quadrilha Junina (com banda)', descricao: 'Quadrilha junina com a banda Brincatocadeira.', valor: 3000, duracaoMinutos: 90 },
+    { id: 'carnaval-solo', tipoEvento: 'CARNAVAL', nome: 'Bailinho de Carnaval (solo)', descricao: 'Bailinho de carnaval para o público infantil, com Pedro Canuto. Inclui equipamento de som.', valor: null, duracaoMinutos: 60 },
+    { id: 'carnaval-musico', tipoEvento: 'CARNAVAL', nome: 'Bailinho de Carnaval (com músico)', descricao: 'Bailinho de carnaval para o público infantil, com Pedro Canuto e mais um músico.', valor: null, duracaoMinutos: 90 },
+    { id: 'carnaval-banda', tipoEvento: 'CARNAVAL', nome: 'Bailinho de Carnaval (com banda)', descricao: 'Bailinho de carnaval com a banda Brincatocadeira.', valor: null, duracaoMinutos: 90 },
+    { id: 'sao-joao-solo', tipoEvento: 'SAO_JOAO', nome: 'Quadrilha Junina (solo)', descricao: 'Quadrilha junina para o público infantil, com Pedro Canuto. Inclui equipamento de som.', valor: null, duracaoMinutos: 60 },
+    { id: 'sao-joao-musico', tipoEvento: 'SAO_JOAO', nome: 'Quadrilha Junina (com músico)', descricao: 'Quadrilha junina para o público infantil, com Pedro Canuto e mais um músico.', valor: null, duracaoMinutos: 90 },
+    { id: 'sao-joao-banda', tipoEvento: 'SAO_JOAO', nome: 'Quadrilha Junina (com banda)', descricao: 'Quadrilha junina com a banda Brincatocadeira.', valor: null, duracaoMinutos: 90 },
     { id: 'casamento', tipoEvento: 'CASAMENTO', nome: 'Casamento', descricao: 'Repertório e formato definidos sob consulta.', valor: null, duracaoMinutos: null },
     { id: 'jornada-percussiva', tipoEvento: 'JORNADA_PERCUSSIVA', nome: 'Jornada percussiva', descricao: 'Oficina de percussão para pessoas com ou sem experiência prévia com música. Formato combinado direto com o Pedro.', valor: null, duracaoMinutos: null, soContato: true },
     { id: 'soundhealing', tipoEvento: 'MUSICOTERAPIA_EVENTO', nome: 'Sound healing com instrumentos xamânicos', descricao: 'Sessão sonora terapêutica em grupo.', valor: null, duracaoMinutos: null },
