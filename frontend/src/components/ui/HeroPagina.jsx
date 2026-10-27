@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { whatsappComMensagem } from '../../data/servicos.js'
 
 /** Abertura das páginas de serviço: título, chamada, ilustração e os dois botões de contato. */
-function HeroPagina({ rotulo, titulo, descricao, imagem, imagemAlt, imagemClasse = 'max-w-md drop-shadow-xl', agendar, textoAgendar = 'Agendar', mensagemWhatsapp }) {
+function HeroPagina({ rotulo, titulo, descricao, imagem, imagemAlt, agendar, textoAgendar = 'Agendar', mensagemWhatsapp }) {
     return (
         <section className="relative overflow-hidden bg-linear-to-br from-areia via-creme to-creme">
             <div className="pointer-events-none absolute -top-24 -right-24 size-80 rounded-full bg-girassol/20 blur-3xl" aria-hidden="true"></div>
@@ -21,7 +21,7 @@ function HeroPagina({ rotulo, titulo, descricao, imagem, imagemAlt, imagemClasse
                         </a>
                     </div>
                 </div>
-                <img src={imagem} alt={imagemAlt} className={`mx-auto w-full ${imagemClasse}`} fetchPriority="high" />
+                <img src={imagem} alt={imagemAlt} className="mx-auto w-full max-w-md drop-shadow-xl" fetchPriority="high" />
             </div>
         </section>
     )
