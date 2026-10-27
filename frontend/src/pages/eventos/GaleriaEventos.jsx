@@ -3,12 +3,16 @@ import { Link } from 'react-router-dom'
 import { GradeMolduras, Moldura } from '../../components/ui/Moldura'
 import GaleriaTemporadas from '../brincatocadeira/GaleriaTemporadas'
 import { ALBUNS_RITOS } from '../ritos-sonoros/albunsRitos'
+import { ALBUNS_CONVIDADO } from '../brincatocadeira/albunsConvidado'
+import CarrosselModal from '../../components/ui/CarrosselModal'
 import capaInfantis from '../../assets/web/galeria-brincatocadeira/carnaval-1.webp'
 import capaMusicaAoVivo from '../../assets/web/instrumentos-service.webp'
 import capaJornada from '../../assets/web/jornada-service.webp'
 
 function GaleriaEventos({ ancoraMusicaAoVivo }) {
     const [brincatocadeiraAberta, setBrincatocadeiraAberta] = useState(false)
+    const [convidadoAberto, setConvidadoAberto] = useState(false)
+    const cantarolou = ALBUNS_CONVIDADO[0]
 
     const secoes = [
         {
@@ -41,6 +45,14 @@ function GaleriaEventos({ ancoraMusicaAoVivo }) {
             para: '/jornadapercussiva',
             rotuloAcao: 'Conhecer a Jornada Percussiva',
         },
+        {
+            tag: 'Participação como músico convidado',
+            capa: cantarolou.fotos[0].src,
+            quantidade: cantarolou.fotos.length,
+            legenda: 'Pedro como músico convidado do Cantarolou. Toque para ver as fotos.',
+            onClick: () => setConvidadoAberto(true),
+            rotuloAcao: 'Ver as fotos da participação no Cantarolou',
+        },
     ]
 
     return (
@@ -52,6 +64,9 @@ function GaleriaEventos({ ancoraMusicaAoVivo }) {
             </GradeMolduras>
 
             {brincatocadeiraAberta && <ModalBrincatocadeira onFechar={() => setBrincatocadeiraAberta(false)} />}
+            {convidadoAberto && (
+                <CarrosselModal titulo={cantarolou.tag} fotos={cantarolou.fotos} legenda={cantarolou.legenda} onFechar={() => setConvidadoAberto(false)} />
+            )}
         </>
     )
 }
