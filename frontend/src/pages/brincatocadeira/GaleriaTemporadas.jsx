@@ -7,12 +7,15 @@ import natal3 from '../../assets/web/galeria-brincatocadeira/natal-3.webp'
 import carnaval1 from '../../assets/web/galeria-brincatocadeira/carnaval-1.webp'
 import carnaval2 from '../../assets/web/galeria-brincatocadeira/carnaval-2.webp'
 import carnaval3 from '../../assets/web/galeria-brincatocadeira/carnaval-3.webp'
+import carnaval4 from '../../assets/web/galeria-brincatocadeira/carnaval-4.webp'
 import aniversarios1 from '../../assets/web/galeria-brincatocadeira/aniversarios-1.webp'
 import aniversarios2 from '../../assets/web/galeria-brincatocadeira/aniversarios-2.webp'
 import aniversarios3 from '../../assets/web/galeria-brincatocadeira/aniversarios-3.webp'
 import aniversarios4 from '../../assets/web/galeria-brincatocadeira/aniversarios-4.webp'
 import aniversarios5 from '../../assets/web/galeria-brincatocadeira/aniversarios-5.webp'
 import aniversarios6 from '../../assets/web/galeria-brincatocadeira/aniversarios-6.webp'
+import aniversarios7 from '../../assets/web/galeria-brincatocadeira/aniversarios-7.webp'
+import aniversarios8 from '../../assets/web/galeria-brincatocadeira/aniversarios-8.webp'
 import saoJoao1 from '../../assets/web/galeria-brincatocadeira/sao-joao-1.webp'
 import saoJoao2 from '../../assets/web/galeria-brincatocadeira/sao-joao-2.webp'
 import saoJoao3 from '../../assets/web/galeria-brincatocadeira/sao-joao-3.webp'
@@ -38,6 +41,7 @@ const TEMPORADAS = [
             { src: carnaval1, alt: 'Pedro cantando no palco do Terraço do Barra com o guitarrista' },
             { src: carnaval2, alt: 'Pedro de óculos escuros e maquiagem de Carnaval no Terraço do Barra' },
             { src: carnaval3, alt: 'Pedro sorrindo com colar de flores e maquiagem de Carnaval' },
+            { src: carnaval4, alt: 'A banda do Brincatocadeira figurinada, de braços abertos em frente ao palco do shopping' },
         ],
     },
     {
@@ -49,6 +53,8 @@ const TEMPORADAS = [
             { src: aniversarios4, alt: 'Pedro com o fantoche de macaco contando história para as crianças na roda de música' },
             { src: aniversarios5, alt: 'Pedro mostrando um ovinho de percussão para um menino na roda de música' },
             { src: aniversarios6, alt: 'Crianças em volta dos instrumentos de sucata, vistas de cima, tocando juntas' },
+            { src: aniversarios7, alt: 'Pedro agachado no tapete brincando de esconde-esconde musical com as crianças da festa' },
+            { src: aniversarios8, alt: 'Pedro sentado no tapete espalhando os instrumentos de sucata para as crianças da roda' },
         ],
     },
     {
