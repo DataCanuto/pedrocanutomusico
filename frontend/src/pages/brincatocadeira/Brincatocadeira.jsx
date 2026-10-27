@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import imagem from '../../assets/web/brincatocadeira-servicos.webp'
+import imagem from '../../assets/web/galeria-brincatocadeira/aniversarios-4.webp'
 import HeroPagina from '../../components/ui/HeroPagina'
 import BlocoTexto from '../../components/ui/BlocoTexto'
 import CabecalhoSecao from '../../components/ui/CabecalhoSecao'
@@ -15,7 +15,8 @@ function Brincatocadeira() {
                 titulo="Música e diversão para a família inteira"
                 descricao="Um projeto de música e musicalização que transforma canções, brincadeiras e experiências sonoras em momentos de alegria, interação e descoberta."
                 imagem={imagem}
-                imagemAlt="Ilustração de Pedro tocando violão com crianças em volta da logomarca do Brincatocadeira"
+                imagemAlt="Pedro sentado no tatame com um fantoche de macaco, cantando para crianças pequenas numa roda de música"
+                imagemClasse="max-w-md rounded-3xl object-cover shadow-xl"
                 agendar="/agendar?servico=EVENTO&tipo=ANIVERSARIO&pacote=brincatocadeira&publico=INFANTIL"
                 textoAgendar="Reservar data"
                 mensagemWhatsapp="Olá, Pedro! Quero o Brincatocadeira na minha festa."
