@@ -6,7 +6,7 @@ import { ALBUNS_RITOS } from '../ritos-sonoros/albunsRitos'
 import { ALBUNS_CONVIDADO } from '../brincatocadeira/albunsConvidado'
 import CarrosselModal from '../../components/ui/CarrosselModal'
 import capaInfantis from '../../assets/web/galeria-brincatocadeira/carnaval-1.webp'
-import capaMusicaAoVivo from '../../assets/web/instrumentos-service.webp'
+import capaMusicaAoVivo from '../../assets/web/musica-ao-vivo-capa.webp'
 import capaJornada from '../../assets/web/jornada-service.webp'
 
 function GaleriaEventos({ ancoraMusicaAoVivo }) {
