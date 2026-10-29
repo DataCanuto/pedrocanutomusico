@@ -13,6 +13,16 @@ import aniversarios3 from '../../assets/web/galeria-brincatocadeira/aniversarios
 import aniversarios4 from '../../assets/web/galeria-brincatocadeira/aniversarios-4.webp'
 import aniversarios5 from '../../assets/web/galeria-brincatocadeira/aniversarios-5.webp'
 import aniversarios6 from '../../assets/web/galeria-brincatocadeira/aniversarios-6.webp'
+import aniversarioInfantil1 from '../../assets/web/galeria-aniversario-infantil/aniversario-infantil-1.webp'
+import aniversarioInfantil2 from '../../assets/web/galeria-aniversario-infantil/aniversario-infantil-2.webp'
+import aniversarioInfantil3 from '../../assets/web/galeria-aniversario-infantil/aniversario-infantil-3.webp'
+import aniversarioInfantil4 from '../../assets/web/galeria-aniversario-infantil/aniversario-infantil-4.webp'
+import aniversarioInfantil5 from '../../assets/web/galeria-aniversario-infantil/aniversario-infantil-5.webp'
+import aniversarioInfantil6 from '../../assets/web/galeria-aniversario-infantil/aniversario-infantil-6.webp'
+import aniversarioInfantil7 from '../../assets/web/galeria-aniversario-infantil/aniversario-infantil-7.webp'
+import aniversarioInfantil8 from '../../assets/web/galeria-aniversario-infantil/aniversario-infantil-8.webp'
+import aniversarioInfantil9 from '../../assets/web/galeria-aniversario-infantil/aniversario-infantil-9.webp'
+import aniversarioInfantil10 from '../../assets/web/galeria-aniversario-infantil/aniversario-infantil-10.webp'
 import saoJoao1 from '../../assets/web/galeria-brincatocadeira/sao-joao-1.webp'
 import saoJoao2 from '../../assets/web/galeria-brincatocadeira/sao-joao-2.webp'
 import saoJoao3 from '../../assets/web/galeria-brincatocadeira/sao-joao-3.webp'
@@ -49,6 +59,23 @@ const TEMPORADAS = [
             { src: aniversarios3, alt: 'Instrumentos espalhados no tapete da roda de música' },
             { src: aniversarios5, alt: 'Pedro mostrando um ovinho de percussão para um menino na roda de música' },
             { src: aniversarios6, alt: 'Crianças em volta dos instrumentos de sucata, vistas de cima, tocando juntas' },
+        ],
+    },
+    {
+        // Capa autorizada pela família (sem desfoque); nas demais, rostos de criança desfocados.
+        tag: 'Aniversário infantil',
+        etiquetaAmarela: true,
+        fotos: [
+            { src: aniversarioInfantil1, alt: 'Pedro com a sanfoninha ao lado da família da aniversariante, atrás do bolo de 1 ano' },
+            { src: aniversarioInfantil2, alt: 'Crianças sentadas no tapete explorando os instrumentos da roda de música, com os convidados filmando ao fundo' },
+            { src: aniversarioInfantil3, alt: 'Pedro mostra um tamborzinho para a aniversariante e um menino, sentados no tapete' },
+            { src: aniversarioInfantil4, alt: 'Um menino toca ukulele de frente para Pedro, que acompanha na sanfoninha' },
+            { src: aniversarioInfantil5, alt: 'Pedro sentado no chão com a sanfoninha levanta um boneco enquanto duas meninas assistem de costas' },
+            { src: aniversarioInfantil6, alt: 'Pedro com um boneco nas mãos canta para as crianças, que tocam baquetas e tamborzinhos no tapete' },
+            { src: aniversarioInfantil7, alt: 'Pedro de microfone e camisa estampada de instrumentos, chegando para a roda' },
+            { src: aniversarioInfantil8, alt: 'Vista do salão: Pedro dança na frente das crianças em volta do tapete de instrumentos, com as famílias nas mesas' },
+            { src: aniversarioInfantil9, alt: 'Pedro toca ukulele para a aniversariante, que segura um ovinho de percussão' },
+            { src: aniversarioInfantil10, alt: 'Pedro conduz a roda enquanto as crianças pequenas tocam sanfoninha, ovinhos e chocalhos no tapete' },
         ],
     },
     {
