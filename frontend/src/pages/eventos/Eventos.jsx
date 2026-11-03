@@ -48,7 +48,7 @@ function Eventos() {
                     <CabecalhoSecao
                         rotulo="Galeria"
                         titulo="Música para cada tipo de evento"
-                        descricao="Eventos infantis, música ao vivo, ritos sonoros e jornada percussiva. Toque numa foto para ver mais."
+                        descricao="Eventos infantis, música ao vivo, ritos sonoros, jornada percussiva e participações como músico convidado. Toque numa foto para ver mais."
                         centralizado
                     />
                     <GaleriaEventos ancoraMusicaAoVivo="musica-ao-vivo" />

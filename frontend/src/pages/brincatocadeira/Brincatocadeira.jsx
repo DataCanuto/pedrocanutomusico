@@ -6,6 +6,7 @@ import CabecalhoSecao from '../../components/ui/CabecalhoSecao'
 import ChamadaFinal from '../../components/ui/ChamadaFinal'
 import GaleriaTemporadas from './GaleriaTemporadas'
 import CarrosselCards from './CarrosselCards'
+import GaleriaConvidado from './GaleriaConvidado'
 
 function Brincatocadeira() {
     return (
@@ -49,6 +50,18 @@ function Brincatocadeira() {
                         centralizado
                     />
                     <GaleriaTemporadas />
+                </div>
+            </section>
+
+            <section className="secao">
+                <div className="container-site">
+                    <CabecalhoSecao
+                        rotulo="Parcerias"
+                        titulo="Participação como músico convidado"
+                        descricao="Projetos de outros grupos em que o Pedro sobe ao palco como convidado. Toque num projeto para ver as fotos."
+                        centralizado
+                    />
+                    <GaleriaConvidado />
                 </div>
             </section>
 

@@ -41,7 +41,7 @@ export function Moldura({ tag, capa, quantidade, etiquetaAmarela = false, legend
             </span>
             {tag && (
                 <span
-                    className={`absolute bottom-3 left-1/2 -translate-x-1/2 -rotate-2 rounded-md px-4 py-1 font-display text-lg font-bold tracking-wide whitespace-nowrap text-tinta uppercase shadow-md sm:text-xl ${
+                    className={`absolute bottom-3 left-1/2 -translate-x-1/2 -rotate-2 rounded-md px-4 py-1 font-display text-lg font-bold tracking-wide w-max max-w-[90%] text-center text-balance text-tinta uppercase shadow-md sm:text-xl ${
                         etiquetaAmarela ? 'bg-girassol' : 'bg-white ring-1 ring-tinta/10'
                     }`}
                 >
