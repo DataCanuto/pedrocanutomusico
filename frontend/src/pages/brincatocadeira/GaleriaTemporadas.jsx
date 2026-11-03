@@ -7,12 +7,18 @@ import natal3 from '../../assets/web/galeria-brincatocadeira/natal-3.webp'
 import carnaval1 from '../../assets/web/galeria-brincatocadeira/carnaval-1.webp'
 import carnaval2 from '../../assets/web/galeria-brincatocadeira/carnaval-2.webp'
 import carnaval3 from '../../assets/web/galeria-brincatocadeira/carnaval-3.webp'
+import carnaval4 from '../../assets/web/galeria-brincatocadeira/carnaval-4.webp'
+import carnaval5 from '../../assets/web/galeria-brincatocadeira/carnaval-5.webp'
+import carnavalVideo1Capa from '../../assets/web/galeria-brincatocadeira/carnaval-video-1-capa.webp'
+import carnavalVideo1 from '../../assets/web/galeria-brincatocadeira/carnaval-video-1.mp4'
 import aniversarios1 from '../../assets/web/galeria-brincatocadeira/aniversarios-1.webp'
 import aniversarios2 from '../../assets/web/galeria-brincatocadeira/aniversarios-2.webp'
 import aniversarios3 from '../../assets/web/galeria-brincatocadeira/aniversarios-3.webp'
 import aniversarios4 from '../../assets/web/galeria-brincatocadeira/aniversarios-4.webp'
 import aniversarios5 from '../../assets/web/galeria-brincatocadeira/aniversarios-5.webp'
 import aniversarios6 from '../../assets/web/galeria-brincatocadeira/aniversarios-6.webp'
+import aniversarios7 from '../../assets/web/galeria-brincatocadeira/aniversarios-7.webp'
+import aniversarios8 from '../../assets/web/galeria-brincatocadeira/aniversarios-8.webp'
 import aniversarioInfantil1 from '../../assets/web/galeria-aniversario-infantil/aniversario-infantil-1.webp'
 import aniversarioInfantil2 from '../../assets/web/galeria-aniversario-infantil/aniversario-infantil-2.webp'
 import aniversarioInfantil3 from '../../assets/web/galeria-aniversario-infantil/aniversario-infantil-3.webp'
@@ -29,6 +35,11 @@ import saoJoao3 from '../../assets/web/galeria-brincatocadeira/sao-joao-3.webp'
 import ferias1 from '../../assets/web/galeria-brincatocadeira/ferias-1.webp'
 import ferias2 from '../../assets/web/galeria-brincatocadeira/ferias-2.webp'
 import ferias3 from '../../assets/web/galeria-brincatocadeira/ferias-3.webp'
+import ferias4 from '../../assets/web/galeria-brincatocadeira/ferias-4.webp'
+import ferias5 from '../../assets/web/galeria-brincatocadeira/ferias-5.webp'
+import ferias6 from '../../assets/web/galeria-brincatocadeira/ferias-6.webp'
+import feriasVideo1Capa from '../../assets/web/galeria-brincatocadeira/ferias-video-1-capa.webp'
+import feriasVideo1 from '../../assets/web/galeria-brincatocadeira/ferias-video-1.mp4'
 
 // Fotos reais dos shows e rodas, agrupadas pela época do ano (mesmas tags do card 3/4 da prospecção).
 // Regra do projeto: nenhum rosto de criança em primeiro plano; plateia de longe pode aparecer.
@@ -48,6 +59,9 @@ const TEMPORADAS = [
             { src: carnaval1, alt: 'Pedro cantando no palco do Terraço do Barra com o guitarrista' },
             { src: carnaval2, alt: 'Pedro de óculos escuros e maquiagem de Carnaval no Terraço do Barra' },
             { src: carnaval3, alt: 'Pedro sorrindo com colar de flores e maquiagem de Carnaval' },
+            { src: carnaval4, alt: 'A banda do Brincatocadeira figurinada, de braços abertos em frente ao palco do shopping' },
+            { src: carnaval5, alt: 'Guitarrista da banda sorrindo com maquiagem de pedrinhas de Carnaval e a guitarra azul' },
+            { src: carnavalVideo1Capa, video: carnavalVideo1, alt: 'Vídeo: a banda tocando no pátio do shopping, com a multidão pulando o Carnaval vista de cima' },
         ],
     },
     {
@@ -59,6 +73,8 @@ const TEMPORADAS = [
             { src: aniversarios3, alt: 'Instrumentos espalhados no tapete da roda de música' },
             { src: aniversarios5, alt: 'Pedro mostrando um ovinho de percussão para um menino na roda de música' },
             { src: aniversarios6, alt: 'Crianças em volta dos instrumentos de sucata, vistas de cima, tocando juntas' },
+            { src: aniversarios7, alt: 'Pedro agachado no tapete brincando de esconde-esconde musical com as crianças da festa' },
+            { src: aniversarios8, alt: 'Pedro sentado no tapete espalhando os instrumentos de sucata para as crianças da roda' },
         ],
     },
     {
@@ -93,6 +109,10 @@ const TEMPORADAS = [
             { src: ferias1, alt: 'Pedro puxando a dança à noite no Terraço do Barra' },
             { src: ferias2, alt: 'Pedro dançando no meio da roda com as famílias' },
             { src: ferias3, alt: 'Plateia lotada no terraço, vista de longe' },
+            { src: ferias4, alt: 'Pedro sentado de pernas cruzadas em frente ao palco do Terraço do Barra, conversando com as crianças' },
+            { src: ferias5, alt: 'Crianças sentadas no tapete tocando chocalho e pandeirola' },
+            { src: ferias6, alt: 'Pedro de costas apontando para a plateia de famílias no terraço, ao pôr do sol' },
+            { src: feriasVideo1Capa, video: feriasVideo1, alt: 'Vídeo: famílias e crianças brincando com o tecido azul no terraço' },
         ],
     },
 ]
