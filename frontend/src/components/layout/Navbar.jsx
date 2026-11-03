@@ -52,7 +52,7 @@ function Navbar() {
                             <div className="absolute left-0 mt-2 w-80 rounded-2xl bg-white p-2 shadow-xl ring-1 ring-tinta/5">
                                 {SERVICOS.map((servico) => (
                                     <NavLink key={servico.caminho} to={servico.caminho} className="flex items-center gap-3 rounded-xl p-2 hover:bg-areia">
-                                        <img src={servico.imagem} alt="" className="size-10 rounded-lg object-cover" loading="lazy" />
+                                        <img src={servico.imagem} alt="" className="size-10 rounded-lg object-cover object-top" loading="lazy" />
                                         <span className="font-semibold">{servico.nome}</span>
                                     </NavLink>
                                 ))}
