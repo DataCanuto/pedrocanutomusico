@@ -227,7 +227,7 @@ function CartaoServico({ servico }) {
     return (
         <article className="group flex flex-col overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-tinta/5 transition hover:-translate-y-1 hover:shadow-xl">
             <Link to={servico.caminho} className="block aspect-[4/3] overflow-hidden bg-areia" tabIndex={-1} aria-hidden="true">
-                <img src={servico.imagem} alt="" loading="lazy" className="size-full object-cover transition duration-500 group-hover:scale-105" />
+                <img src={servico.imagem} alt="" loading="lazy" className="size-full object-cover object-top transition duration-500 group-hover:scale-105" />
             </Link>
             <div className="flex flex-1 flex-col p-6">
                 <h3 className="text-2xl">
