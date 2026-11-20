@@ -6,8 +6,8 @@ import { whatsappComMensagem } from './servicos.js'
  */
 export const SPOTIFY_BRINCATOCADEIRA = 'https://open.spotify.com/artist/4JgXIYOuyDR6qSVBaHq9r5'
 
-// Canal do YouTube do Brincatocadeira: preencher com o endereço do canal (ex.: https://www.youtube.com/@...).
-export const YOUTUBE_BRINCATOCADEIRA = ''
+// Canal do YouTube do Brincatocadeira.
+export const YOUTUBE_BRINCATOCADEIRA = 'https://www.youtube.com/@brincatocadeira'
 
 export const LANCAMENTO = {
     titulo: 'Brincatocadeira',
