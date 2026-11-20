@@ -13,8 +13,10 @@ export const LANCAMENTO = {
     titulo: 'Brincatocadeira',
     selo: 'Single novo',
     descricao: 'A música que dá nome à turminha. Aperte o play e dance junto!',
-    href: SPOTIFY_BRINCATOCADEIRA,
-    acao: 'Ouvir no Spotify',
+    botoes: [
+        { id: 'spotify', texto: 'Ouvir no Spotify', icone: 'bi-spotify', cor: 'bg-[#1db954]', href: SPOTIFY_BRINCATOCADEIRA },
+        { id: 'youtube', texto: 'Ver no YouTube', icone: 'bi-youtube', cor: 'bg-[#ff0033]', href: YOUTUBE_BRINCATOCADEIRA },
+    ],
 }
 
 export const LINKS_BRINCA = [
