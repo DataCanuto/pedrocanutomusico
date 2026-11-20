@@ -7,6 +7,7 @@ import ChamadaFinal from '../../components/ui/ChamadaFinal'
 import GaleriaTemporadas from './GaleriaTemporadas'
 import CarrosselCards from './CarrosselCards'
 import GaleriaConvidado from './GaleriaConvidado'
+import LinksBrinca from './LinksBrinca'
 
 function Brincatocadeira() {
     return (
@@ -21,6 +22,8 @@ function Brincatocadeira() {
                 textoAgendar="Reservar data"
                 mensagemWhatsapp="Olá, Pedro! Quero o Brincatocadeira na minha festa."
             />
+
+            <LinksBrinca />
 
             <section className="secao">
                 <div className="container-site">
