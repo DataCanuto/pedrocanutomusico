@@ -42,22 +42,29 @@ function LinksBrinca() {
                     <p className="mt-2 text-creme/70">Música autoral para a infância, feita em Salvador.</p>
                 </div>
 
-                <a
-                    href={LANCAMENTO.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group mt-8 flex items-center gap-4 rounded-3xl bg-creme p-3 text-tinta shadow-2xl shadow-black/30 transition hover:-translate-y-0.5"
-                >
-                    <img src={capa} alt={`Capa do single ${LANCAMENTO.titulo}`} className="size-24 shrink-0 rounded-2xl sm:size-28" loading="lazy" />
-                    <span className="min-w-0 flex-1">
-                        <span className="inline-block rounded-full bg-marca px-2.5 py-0.5 text-xs font-bold tracking-wider text-white uppercase">{LANCAMENTO.selo}</span>
-                        <span className="mt-1 block font-display text-2xl leading-tight font-bold">{LANCAMENTO.titulo}</span>
-                        <span className="block text-sm text-tinta-suave">{LANCAMENTO.descricao}</span>
-                        <span className="mt-1 inline-flex items-center gap-1.5 text-sm font-bold text-[#169c46]">
-                            <i className="bi bi-play-circle-fill text-base" aria-hidden="true"></i> {LANCAMENTO.acao}
-                        </span>
-                    </span>
-                </a>
+                <div className="mt-8 rounded-3xl bg-creme p-3 text-tinta shadow-2xl shadow-black/30">
+                    <div className="flex items-center gap-4">
+                        <img src={capa} alt={`Capa do single ${LANCAMENTO.titulo}`} className="size-24 shrink-0 rounded-2xl sm:size-28" loading="lazy" />
+                        <div className="min-w-0 flex-1">
+                            <span className="inline-block rounded-full bg-marca px-2.5 py-0.5 text-xs font-bold tracking-wider text-white uppercase">{LANCAMENTO.selo}</span>
+                            <p className="mt-1 font-display text-2xl leading-tight font-bold">{LANCAMENTO.titulo}</p>
+                            <p className="text-sm text-tinta-suave">{LANCAMENTO.descricao}</p>
+                        </div>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                        {LANCAMENTO.botoes.filter((b) => b.href).map((b) => (
+                            <a
+                                key={b.id}
+                                href={b.href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`inline-flex items-center justify-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:brightness-95 ${b.cor}`}
+                            >
+                                <i className={`bi ${b.icone} text-base`} aria-hidden="true"></i> {b.texto}
+                            </a>
+                        ))}
+                    </div>
+                </div>
 
                 <nav aria-label="Links do Brincatocadeira" className="mt-4 grid gap-3">
                     {links.map((item) => <ItemLink key={item.id} item={item} />)}
